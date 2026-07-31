@@ -10,8 +10,8 @@ import "strings"
 //  1. Compliance words (unsubscribe / stop / remove me / take me off) ALWAYS win.
 //     Treating these as anything other than an unsubscribe request is a
 //     compliance risk, so they short-circuit before sentiment.
-//  2. Clear interest phrases => positive.
-//  3. Clear rejection phrases => negative.
+//  2. Clear rejection phrases => negative.
+//  3. Clear interest phrases => positive.
 func classifyLexicon(in Input) (Result, bool) {
 	text := strings.ToLower(strings.TrimSpace(in.Subject + "\n" + in.BodyText))
 	if text == "" {
@@ -25,17 +25,19 @@ func classifyLexicon(in Input) (Result, bool) {
 		}
 	}
 
-	// 2. Clear interest => positive.
-	for _, kw := range positiveKeywords {
-		if strings.Contains(text, kw) {
-			return Result{Class: ClassPositive, Confidence: 0.8, Source: SourceLexicon}, true
-		}
-	}
-
-	// 3. Clear rejection => negative.
+	// 2. Clear rejection => negative. Evaluate this before positive so
+	// phrases such as "not interested" are not misread by the positive
+	// substring "interested". Compliance/opt-out still wins above.
 	for _, kw := range negativeKeywords {
 		if strings.Contains(text, kw) {
 			return Result{Class: ClassNegative, Confidence: 0.8, Source: SourceLexicon}, true
+		}
+	}
+
+	// 3. Clear interest => positive.
+	for _, kw := range positiveKeywords {
+		if strings.Contains(text, kw) {
+			return Result{Class: ClassPositive, Confidence: 0.8, Source: SourceLexicon}, true
 		}
 	}
 

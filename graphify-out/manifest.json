@@ -2970,8 +2970,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_new_email.go": {
-    "mtime": 1785394382.6625352,
-    "ast_hash": "a168a5233320773949dee2b72529e460",
+    "mtime": 1785489755.2522614,
+    "ast_hash": "13d658c32893f1e07e5b010958e1817f",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_remove_email.go": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/events.go": {
-    "mtime": 1785394382.6625352,
-    "ast_hash": "3afdb361803e045b537ce7584f0fb965",
+    "mtime": 1785489755.2522614,
+    "ast_hash": "cd1b70a87f0db683d1bc2390bc91b010",
     "semantic_hash": ""
   },
   "internal/app/consumer/open_class.go": {
@@ -3410,8 +3410,8 @@
     "semantic_hash": ""
   },
   "internal/app/replyclassify/lexicon.go": {
-    "mtime": 1785394382.674535,
-    "ast_hash": "a6f4daeee97532ecfe8ae7d80970fcfa",
+    "mtime": 1785489755.37326,
+    "ast_hash": "f6817e161e71d9abc2a0a36649f5d2c3",
     "semantic_hash": ""
   },
   "internal/app/replyclassify/model.go": {
@@ -3875,18 +3875,18 @@
     "semantic_hash": ""
   },
   "internal/app/worker/wmail/event_google.go": {
-    "mtime": 1785394382.684535,
-    "ast_hash": "06f7d683a2f718ed61910a04efe2b2ed",
+    "mtime": 1785489755.2532613,
+    "ast_hash": "0f47f8fcffc4839685ff1329ad5ee8bb",
     "semantic_hash": ""
   },
   "internal/app/worker/wmail/event_graph.go": {
-    "mtime": 1785394382.684535,
-    "ast_hash": "fea8fad4cdfdbfc8c0b4b711ec2a2f45",
+    "mtime": 1785489755.2532613,
+    "ast_hash": "0a238b32c8c38c9b132bd1a0f28f75a4",
     "semantic_hash": ""
   },
   "internal/app/worker/wmail/event_imap.go": {
-    "mtime": 1785394382.684535,
-    "ast_hash": "6fc2917bf2bbec4c274f065cf5c8ee71",
+    "mtime": 1785489755.2542613,
+    "ast_hash": "cdd76095514754ac8b6f1b0359da49c2",
     "semantic_hash": ""
   },
   "internal/app/worker/wmail/generate_snippet.go": {
@@ -3950,8 +3950,8 @@
     "semantic_hash": ""
   },
   "internal/app/worker/wmail/wmail.go": {
-    "mtime": 1785394383.787527,
-    "ast_hash": "af50e1f41a919a685d01bf5324a72c77",
+    "mtime": 1785489755.2552614,
+    "ast_hash": "056ba98ec0439be19b777fdddb592397",
     "semantic_hash": ""
   },
   "internal/app/worker_orchestrator/keypair.go": {
@@ -6350,8 +6350,8 @@
     "semantic_hash": ""
   },
   "internal/repository/pg_unibox.go": {
-    "mtime": 1785394382.7345347,
-    "ast_hash": "8187fcbe2a944b3869cc27ef9258d8e0",
+    "mtime": 1785489755.2572613,
+    "ast_hash": "48ff4d2b39efe9b9602c582a599a13f5",
     "semantic_hash": ""
   },
   "internal/repository/pg_user.go": {
@@ -14367,6 +14367,41 @@
   "internal/infrastructure/db/migrations/000080_worker_capacity_last_seen.up.sql": {
     "mtime": 1785443974.243311,
     "ast_hash": "9221c25d1a3b239245e66b37b2ff716f",
+    "semantic_hash": ""
+  },
+  "internal/app/consumer/event_new_email_test.go": {
+    "mtime": 1785489755.2522614,
+    "ast_hash": "d3187a0c282a4b551a8378b57473fc2f",
+    "semantic_hash": ""
+  },
+  "internal/app/replyclassify/lexicon_regression_test.go": {
+    "mtime": 1785489755.3742602,
+    "ast_hash": "5debb00585c100e9e986881b024cbdc5",
+    "semantic_hash": ""
+  },
+  "internal/app/worker/wmail/event_new_email.go": {
+    "mtime": 1785489755.2542613,
+    "ast_hash": "a71bdd4e466eebfc6a5beae342ca6a2c",
+    "semantic_hash": ""
+  },
+  "internal/app/worker/wmail/event_new_email_test.go": {
+    "mtime": 1785489755.2542613,
+    "ast_hash": "fd81309fb984347fc6078b2b5ed72661",
+    "semantic_hash": ""
+  },
+  "internal/app/worker/wmail/wmail_test.go": {
+    "mtime": 1785489755.2552614,
+    "ast_hash": "7763ed448ed05b8e8bdd155faa58694f",
+    "semantic_hash": ""
+  },
+  "internal/infrastructure/db/migrations/000081_populate_worker_capacity_view.up.sql": {
+    "mtime": 1785447191.2227595,
+    "ast_hash": "6a2d2ba32f4c2f8cbcf0f40ddf2d77bd",
+    "semantic_hash": ""
+  },
+  "internal/repository/pg_unibox_test.go": {
+    "mtime": 1785489755.2572613,
+    "ast_hash": "840d21296dee437422660ba604165751",
     "semantic_hash": ""
   }
 }
