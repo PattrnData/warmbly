@@ -152,6 +152,27 @@ type oaiResponseFormat struct {
 	Type string `json:"type"`
 }
 
+type ollamaChatRequest struct {
+	Model    string       `json:"model"`
+	Messages []oaiMessage `json:"messages"`
+	Stream   bool         `json:"stream"`
+	Think    bool         `json:"think"`
+	Format   string       `json:"format,omitempty"`
+	Options  struct {
+		Temperature float64 `json:"temperature"`
+		NumPredict  int     `json:"num_predict,omitempty"`
+	} `json:"options"`
+}
+
+type ollamaChatResponse struct {
+	Message struct {
+		Content string `json:"content"`
+	} `json:"message"`
+	PromptEvalCount int    `json:"prompt_eval_count"`
+	EvalCount       int    `json:"eval_count"`
+	Error           string `json:"error"`
+}
+
 // oaiStreamChunk is one `data:` frame of a streamed completion. Tool-call
 // fragments arrive indexed and must be accumulated across chunks.
 type oaiStreamChunk struct {
@@ -248,6 +269,11 @@ func transcriptToWire(system string, msgs []AgentMessage) []oaiMessage {
 // the backend rejects the legacy request shape (see the compatibility flags on
 // openAIProvider).
 func (p *openAIProvider) complete(ctx context.Context, model string, maxTokens int, msgs []oaiMessage, tools []oaiTool, temperature *float64, jsonMode bool) (*oaiResponse, error) {
+	if p.local && jsonMode && len(tools) == 0 {
+		if resp, err := p.completeOllamaNative(ctx, model, maxTokens, msgs, temperature); err == nil {
+			return resp, nil
+		}
+	}
 	for attempt := 0; ; attempt++ {
 		reqBody := oaiRequest{Model: model, Messages: msgs}
 		if p.useMaxCompletionTokens.Load() {
@@ -303,6 +329,56 @@ func (p *openAIProvider) complete(ctx context.Context, model string, maxTokens i
 		}
 		return &parsed, nil
 	}
+}
+
+func (p *openAIProvider) completeOllamaNative(ctx context.Context, model string, maxTokens int, msgs []oaiMessage, temperature *float64) (*oaiResponse, error) {
+	base := strings.TrimRight(p.baseURL, "/")
+	base = strings.TrimSuffix(base, "/v1")
+	reqBody := ollamaChatRequest{Model: model, Messages: msgs, Stream: false, Think: false, Format: "json"}
+	if temperature != nil {
+		reqBody.Options.Temperature = *temperature
+	}
+	reqBody.Options.NumPredict = maxTokens
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/chat", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.apiKey)
+
+	resp, err := p.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	var parsed ollamaChatResponse
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return nil, fmt.Errorf("ollama: decode response: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if parsed.Error != "" {
+			return nil, fmt.Errorf("ollama: %s", parsed.Error)
+		}
+		return nil, fmt.Errorf("ollama: unexpected status %d", resp.StatusCode)
+	}
+	text := strings.TrimSpace(parsed.Message.Content)
+	if text == "" {
+		return nil, errors.New("ollama: empty completion")
+	}
+	out := &oaiResponse{Choices: []oaiChoice{{FinishReason: "stop"}}}
+	out.Choices[0].Message.Content = text
+	out.Usage.PromptTokens = parsed.PromptEvalCount
+	out.Usage.CompletionTokens = parsed.EvalCount
+	out.Usage.TotalTokens = parsed.PromptEvalCount + parsed.EvalCount
+	return out, nil
 }
 
 // completeStream performs one chat-completion call with stream=true, invoking

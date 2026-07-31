@@ -220,7 +220,7 @@ make backend
 make run AI_MODEL=qwen2.5
 ```
 
-The default dev env sets `AI_PROVIDER=ollama`, `AI_BASE_URL=https://ollama.pattrndata.io/v1`, `AI_API_KEY=local`, and `AI_FREE=true`, so AI credits are not charged and the assistant shows a "free model" notice. Use a tool-capable model such as `llama3.1` or `qwen2.5`, not a 1 to 3B model.
+The default dev env sets `AI_PROVIDER=ollama`, `AI_BASE_URL=https://ollama.pattrndata.io/v1`, `AI_API_KEY=local`, `AI_MODEL_REPLY=fredrezones55/Qwen3.5-Uncensored-HauhauCS-Aggressive:9b`, and `AI_FREE=true`, so AI credits are not charged and the assistant shows a "free model" notice. Use one shared Ollama model for the general assistant and reply classifier when you want to keep only one model resident on the host.
 
 ## Mailpit
 

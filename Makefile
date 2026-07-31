@@ -374,6 +374,7 @@ CREDENTIALS_KEY_DEV := 0123456789abcdef0123456789abcdef0123456789abcdef012345678
 AI_PROVIDER ?= ollama
 AI_KEY ?= local
 AI_MODEL ?=
+AI_MODEL_REPLY ?= fredrezones55/Qwen3.5-Uncensored-HauhauCS-Aggressive:9b
 AI_BASE_URL ?= https://ollama.pattrndata.io/v1
 AI_FREE ?= true
 ifeq ($(AI_PROVIDER),)
@@ -382,6 +383,7 @@ else
 AI_DEV_ENV := AI_PROVIDER=$(AI_PROVIDER) \
 	$(if $(AI_KEY),AI_API_KEY=$(AI_KEY),) \
 	$(if $(AI_MODEL),AI_MODEL=$(AI_MODEL),) \
+	$(if $(AI_MODEL_REPLY),AI_MODEL_REPLY=$(AI_MODEL_REPLY),) \
 	$(if $(AI_BASE_URL),AI_BASE_URL=$(AI_BASE_URL),) \
 	$(if $(AI_FREE),AI_FREE=$(AI_FREE),)
 endif

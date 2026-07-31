@@ -20,8 +20,9 @@ import (
 // and automation (auto_reply / out_of_office) are already settled upstream and
 // are intentionally NOT in the model's output space.
 
-// modelTimeout bounds the single Layer-3 completion.
-const modelTimeout = 8 * time.Second
+// modelTimeout bounds the single Layer-3 completion. The shared Ollama 9B
+// classifier can take longer than small hosted models, especially while warming.
+const modelTimeout = 30 * time.Second
 
 const modelSystemPrompt = "Classify the latest human reply to a cold sales email into one action label. " +
 	"Return strict JSON only: {\"class\":\"positive|negative|question|wrong_person|bad_timing|referral|neutral\",\"confidence\":0.0}. " +

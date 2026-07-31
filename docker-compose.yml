@@ -57,8 +57,7 @@ x-selfhost-env: &selfhost-env
   AI_MODEL: ${AI_MODEL:-}
   AI_MODEL_TRIAL: ${AI_MODEL_TRIAL:-}
   AI_MODEL_PAID: ${AI_MODEL_PAID:-}
-  # Optional Ollama model override for the reply classifier.
-  AI_MODEL_REPLY: ${AI_MODEL_REPLY:-}
+  AI_MODEL_REPLY: ${AI_MODEL_REPLY:-fredrezones55/Qwen3.5-Uncensored-HauhauCS-Aggressive:9b}
   AI_BASE_URL: ${AI_BASE_URL:-https://ollama.pattrndata.io/v1}
   AI_FREE: ${AI_FREE:-true}
 
