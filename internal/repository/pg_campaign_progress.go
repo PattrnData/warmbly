@@ -891,7 +891,7 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 func branchHasPositiveReplyCondition(b *models.Branch) bool {
 	for i := range b.Conditions {
 		switch b.Conditions[i].Field {
-		case "replied", "reply_positive", "reply_negative", "reply_neutral", "reply_automated":
+		case "replied", "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_automated":
 			return true
 		}
 	}

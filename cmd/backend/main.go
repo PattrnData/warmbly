@@ -557,9 +557,9 @@ func main() {
 
 		warmupContentRepo = repository.NewWarmupContentRepository(primaryDB.Pool)
 
-		// AI provider layer. AI_PROVIDER picks a preset (openai/openrouter/groq/
-		// ollama/anthropic/custom) that fills in the base URL + free default; the
-		// AI_* vars supply the key/model/endpoint. Pluggable web search
+		// AI provider layer. Warmbly deployments target the shared Ollama endpoint
+		// via AI_PROVIDER=ollama + AI_BASE_URL; the AI_* vars supply model/key
+		// overrides only when needed. Pluggable web search
 		// (Serper/SearXNG) backs search_web.
 		aiProviderName := strings.ToLower(strings.TrimSpace(cfg.GetStringOptional(ctx, "AI_PROVIDER", "ai_provider", "")))
 		aiKey := cfg.GetSecretOptional(ctx, "AI_API_KEY", "ai_api_key", "")
@@ -1108,12 +1108,13 @@ func main() {
 		// The AI switch's optional web search shares the same pluggable backend as
 		// the campaign switch and dashboard agent.
 		integrationServiceForHandler.SetAISearch(aiSearch)
-		// Port reply-classifier Layer 3 onto the platform provider (OpenAI-first,
-		// self-hostable). Platform-paid, never charged to org credits. Nil provider
+		// Port reply-classifier Layer 3 onto the platform provider (shared Ollama
+		// endpoint in deployed Warmbly). Platform-paid, never charged to org credits. Nil provider
 		// leaves Layer 3 disabled (the ambiguous middle resolves to "unknown").
+		replyClassifierModel := cfg.GetStringOptional(ctx, "AI_MODEL_REPLY", "ai_model_reply", "")
 		if aiProvider != nil {
 			replyclassify.SetModelClassifier(func(ctx context.Context, system, user string) (string, error) {
-				res, err := aiProvider.Complete(ctx, generation.CompletionRequest{System: system, Prompt: user, MaxTokens: 16, Temperature: generation.Deterministic()})
+				res, err := aiProvider.Complete(ctx, generation.CompletionRequest{System: system, Prompt: user, Model: replyClassifierModel, MaxTokens: 128, JSONMode: true, Temperature: generation.Deterministic()})
 				if err != nil {
 					return "", err
 				}

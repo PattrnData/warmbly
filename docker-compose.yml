@@ -51,6 +51,16 @@ x-selfhost-env: &selfhost-env
   REDIS: redis://redis:6379
   AUTH_SECRET: ${AUTH_SECRET:-local-dev-auth-secret-minimum-32-characters-long}
   INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-dev-internal-token}
+  # Warmbly AI targets the shared Ollama OpenAI-compatible endpoint by default.
+  AI_PROVIDER: ${AI_PROVIDER:-ollama}
+  AI_API_KEY: ${AI_API_KEY:-local}
+  AI_MODEL: ${AI_MODEL:-}
+  AI_MODEL_TRIAL: ${AI_MODEL_TRIAL:-}
+  AI_MODEL_PAID: ${AI_MODEL_PAID:-}
+  # Optional Ollama model override for the reply classifier.
+  AI_MODEL_REPLY: ${AI_MODEL_REPLY:-}
+  AI_BASE_URL: ${AI_BASE_URL:-https://ollama.pattrndata.io/v1}
+  AI_FREE: ${AI_FREE:-true}
 
 services:
 
@@ -160,6 +170,8 @@ services:
       BOX_OUTLOOK_CLIENT_SECRET: ${BOX_OUTLOOK_CLIENT_SECRET:-}
     volumes:
       - blobs:/data/blobs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -184,6 +196,8 @@ services:
       ENCRYPTED_KEYS_PROVIDER: postgres
     volumes:
       - blobs:/data/blobs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       backend: { condition: service_healthy }
       nats: { condition: service_healthy }

@@ -26,12 +26,16 @@ import (
 
 // Reply class enum. These exact strings are the shared contract: they are stored
 // on campaign_contact_progress.reply_class and matched by the reply_* branch
-// conditions in the campaign editor. Keep in sync with migration 000027's CHECK
-// constraint and the frontend.
+// conditions in the campaign editor. Keep in sync with the DB CHECK constraint
+// (initially migration 000027, expanded by 000082) and the frontend.
 const (
 	ClassPositive    = "positive"
 	ClassNegative    = "negative"
 	ClassNeutral     = "neutral"
+	ClassQuestion    = "question"
+	ClassWrongPerson = "wrong_person"
+	ClassBadTiming   = "bad_timing"
+	ClassReferral    = "referral"
 	ClassAutoReply   = "auto_reply"
 	ClassOutOfOffice = "out_of_office"
 	ClassUnsubscribe = "unsubscribe"

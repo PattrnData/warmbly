@@ -40,6 +40,9 @@ type openAIProvider struct {
 	// stream_options is OpenAI's usage-in-stream opt-in; some compatible
 	// backends reject the field entirely.
 	omitStreamOptions atomic.Bool
+	// response_format enables JSON mode for strict classifier-style completions;
+	// some OpenAI-compatible backends reject it, so it is compatibility-gated too.
+	omitResponseFormat atomic.Bool
 }
 
 // defaultOpenAIBaseURL is the public OpenAI API. Overridable for
@@ -130,18 +133,23 @@ type oaiRequest struct {
 	Model string `json:"model"`
 	// Exactly one of MaxTokens / MaxCompletionTokens is set per call, driven
 	// by the provider's useMaxCompletionTokens compatibility flag.
-	MaxTokens           int               `json:"max_tokens,omitempty"`
-	MaxCompletionTokens int               `json:"max_completion_tokens,omitempty"`
-	Messages            []oaiMessage      `json:"messages"`
-	Tools               []oaiTool         `json:"tools,omitempty"`
-	ToolChoice          string            `json:"tool_choice,omitempty"`
-	Temperature         *float64          `json:"temperature,omitempty"`
-	Stream              bool              `json:"stream,omitempty"`
-	StreamOptions       *oaiStreamOptions `json:"stream_options,omitempty"`
+	MaxTokens           int                `json:"max_tokens,omitempty"`
+	MaxCompletionTokens int                `json:"max_completion_tokens,omitempty"`
+	Messages            []oaiMessage       `json:"messages"`
+	Tools               []oaiTool          `json:"tools,omitempty"`
+	ToolChoice          string             `json:"tool_choice,omitempty"`
+	Temperature         *float64           `json:"temperature,omitempty"`
+	Stream              bool               `json:"stream,omitempty"`
+	StreamOptions       *oaiStreamOptions  `json:"stream_options,omitempty"`
+	ResponseFormat      *oaiResponseFormat `json:"response_format,omitempty"`
 }
 
 type oaiStreamOptions struct {
 	IncludeUsage bool `json:"include_usage"`
+}
+
+type oaiResponseFormat struct {
+	Type string `json:"type"`
 }
 
 // oaiStreamChunk is one `data:` frame of a streamed completion. Tool-call
@@ -239,7 +247,7 @@ func transcriptToWire(system string, msgs []AgentMessage) []oaiMessage {
 // complete performs one chat-completion call, retrying once per parameter when
 // the backend rejects the legacy request shape (see the compatibility flags on
 // openAIProvider).
-func (p *openAIProvider) complete(ctx context.Context, model string, maxTokens int, msgs []oaiMessage, tools []oaiTool, temperature *float64) (*oaiResponse, error) {
+func (p *openAIProvider) complete(ctx context.Context, model string, maxTokens int, msgs []oaiMessage, tools []oaiTool, temperature *float64, jsonMode bool) (*oaiResponse, error) {
 	for attempt := 0; ; attempt++ {
 		reqBody := oaiRequest{Model: model, Messages: msgs}
 		if p.useMaxCompletionTokens.Load() {
@@ -253,6 +261,9 @@ func (p *openAIProvider) complete(ctx context.Context, model string, maxTokens i
 		if len(tools) > 0 {
 			reqBody.Tools = tools
 			reqBody.ToolChoice = "auto"
+		}
+		if jsonMode && !p.omitResponseFormat.Load() {
+			reqBody.ResponseFormat = &oaiResponseFormat{Type: "json_object"}
 		}
 		body, err := json.Marshal(reqBody)
 		if err != nil {
@@ -279,7 +290,7 @@ func (p *openAIProvider) complete(ctx context.Context, model string, maxTokens i
 			return nil, fmt.Errorf("openai: decode response: %w", err)
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			if resp.StatusCode == http.StatusBadRequest && attempt < 2 && p.adaptParams(parsed.Error) {
+			if resp.StatusCode == http.StatusBadRequest && attempt < 3 && p.adaptParams(parsed.Error) {
 				continue
 			}
 			if parsed.Error != nil {
@@ -476,6 +487,12 @@ func (p *openAIProvider) adaptParams(e *oaiError) bool {
 		}
 		p.omitStreamOptions.Store(true)
 		return true
+	case e.Param == "response_format" || strings.Contains(e.Message, "response_format"):
+		if p.omitResponseFormat.Load() {
+			return false
+		}
+		p.omitResponseFormat.Store(true)
+		return true
 	}
 	return false
 }
@@ -530,7 +547,7 @@ func (p *openAIProvider) RunAgent(ctx context.Context, req AgentRequest) (*Agent
 				req.OnEvent(AgentEvent{Type: EventTextDelta, Text: delta})
 			})
 		} else {
-			resp, err = p.complete(ctx, model, maxTokens, transcriptToWire(req.System, messages), wireTools, nil)
+			resp, err = p.complete(ctx, model, maxTokens, transcriptToWire(req.System, messages), wireTools, nil, false)
 		}
 		if err != nil {
 			return nil, err
@@ -622,7 +639,7 @@ func (p *openAIProvider) Complete(ctx context.Context, req CompletionRequest) (*
 	resp, err := p.complete(ctx, model, maxTokens, []oaiMessage{
 		{Role: "system", Content: req.System},
 		{Role: "user", Content: req.Prompt},
-	}, nil, req.Temperature)
+	}, nil, req.Temperature, req.JSONMode)
 	if err != nil {
 		return nil, err
 	}
@@ -648,7 +665,7 @@ func (p *openAIProvider) GenerateWriting(ctx context.Context, model, prompt stri
 	resp, err := p.complete(ctx, model, writingMaxTokens, []oaiMessage{
 		{Role: "system", Content: BuildVoiceRules(voice)},
 		{Role: "user", Content: prompt},
-	}, nil, nil)
+	}, nil, nil, false)
 	if err != nil {
 		return nil, err
 	}

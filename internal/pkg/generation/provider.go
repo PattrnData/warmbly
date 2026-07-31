@@ -160,6 +160,10 @@ type CompletionRequest struct {
 	Prompt    string
 	Model     string
 	MaxTokens int
+	// JSONMode asks OpenAI-compatible providers to constrain the response to one
+	// JSON object when the backend supports it. Providers that reject the wire
+	// parameter retry without it, so local/self-hosted endpoints still work.
+	JSONMode bool
 	// Temperature optionally pins sampling. nil leaves it to the provider default
 	// (creative writing); a pointer to 0 forces deterministic output (the reply
 	// classifier's Layer 3 needs a stable single-label verdict).

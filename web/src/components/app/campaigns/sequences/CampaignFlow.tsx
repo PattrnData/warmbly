@@ -138,6 +138,10 @@ const POSITIVE_REPLY_FIELDS: BranchField[] = [
     "reply_positive",
     "reply_negative",
     "reply_neutral",
+    "reply_question",
+    "reply_wrong_person",
+    "reply_bad_timing",
+    "reply_referral",
     "reply_automated",
 ];
 const isPositiveReplyField = (f: BranchField) => POSITIVE_REPLY_FIELDS.includes(f);
@@ -2185,6 +2189,10 @@ const BRANCH_PATH_OPTIONS: SelectOption[] = [
     { value: "reply_positive", label: "if replied: positive", group: "Reply intent" },
     { value: "reply_negative", label: "if replied: negative", group: "Reply intent" },
     { value: "reply_neutral", label: "if replied: neutral", group: "Reply intent" },
+    { value: "reply_question", label: "if replied: question", group: "Reply intent" },
+    { value: "reply_wrong_person", label: "if replied: wrong person", group: "Reply intent" },
+    { value: "reply_bad_timing", label: "if replied: bad timing", group: "Reply intent" },
+    { value: "reply_referral", label: "if replied: referral", group: "Reply intent" },
     { value: "reply_automated", label: "if auto-reply / out of office", group: "Reply intent" },
     { value: "random", label: "random split" },
 ];

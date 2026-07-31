@@ -24,10 +24,14 @@ var branchConditionFields = map[string]bool{
 	// auto_reply OR out_of_office. The plain "replied" field above intentionally
 	// EXCLUDES automated replies (only a human reply stamps replied_at), so these
 	// are the only way to route on an automated reply.
-	"reply_positive":  true,
-	"reply_negative":  true,
-	"reply_neutral":   true,
-	"reply_automated": true,
+	"reply_positive":     true,
+	"reply_negative":     true,
+	"reply_neutral":      true,
+	"reply_question":     true,
+	"reply_wrong_person": true,
+	"reply_bad_timing":   true,
+	"reply_referral":     true,
+	"reply_automated":    true,
 	// "random" routes a deterministic percentage of contacts down this branch
 	// (a random split / split-test). Pairs with operator "chance", Value = %.
 	"random": true,
@@ -165,7 +169,7 @@ func conditionState(cond models.BranchCondition, prog *CampaignContactProgress, 
 	// (no time window): the class is set when the reply arrives, so there is
 	// nothing to wait for. reply_automated folds auto_reply + out_of_office.
 	switch cond.Field {
-	case "reply_positive", "reply_negative", "reply_neutral", "reply_automated":
+	case "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_automated":
 		if replyClassMatches(cond.Field, prog.ReplyClass) {
 			return BranchMatch, time.Time{}
 		}
@@ -253,6 +257,14 @@ func replyClassMatches(field, class string) bool {
 		return class == "negative"
 	case "reply_neutral":
 		return class == "neutral"
+	case "reply_question":
+		return class == "question"
+	case "reply_wrong_person":
+		return class == "wrong_person"
+	case "reply_bad_timing":
+		return class == "bad_timing"
+	case "reply_referral":
+		return class == "referral"
 	case "reply_automated":
 		return class == "auto_reply" || class == "out_of_office"
 	default:
@@ -280,7 +292,7 @@ func fieldBelongsToEvent(field, eventKind string) bool {
 		// carries a day window and the editor presents it as a step-boundary path
 		// with no instant toggle, so it must NOT instant-fire here (parity with the
 		// frontend's INSTANT_CAPABLE_FIELDS, which also excludes "replied").
-		case "reply_positive", "reply_negative", "reply_neutral", "reply_automated":
+		case "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_automated":
 			return true
 		}
 	case "open":
