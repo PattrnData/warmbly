@@ -292,6 +292,8 @@ func (r *taskRepository) GetTaskByMessageID(ctx context.Context, messageID strin
 		       scheduled_at, completed_at, cloud_task_name, created_at, updated_at
 		FROM tasks
 		WHERE message_id = $1
+		   OR message_id = '<' || TRIM(BOTH '<>' FROM $1::text) || '>'
+		   OR TRIM(BOTH '<>' FROM message_id) = TRIM(BOTH '<>' FROM $1::text)
 		ORDER BY created_at DESC
 		LIMIT 1
 	`
