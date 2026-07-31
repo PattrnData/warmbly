@@ -2,6 +2,7 @@ package replyclassify
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
@@ -9,24 +10,24 @@ import (
 
 // Layer 3: the OPTIONAL model classifier. It rides the platform LLM provider
 // (M1) wired in from the app mains via SetModelClassifier, so it uses the same
-// OpenAI-first, self-hostable backend as every other AI feature. It is
+// Warmbly AI backend as every other AI feature. It is
 // platform-paid: this path never charges org credits (it settles only the
 // ambiguous sentiment middle the cheap deterministic layers can't). When no
 // provider is wired (no AI_PROVIDER) the layer is a pure
 // no-op that resolves the middle to "unknown" WITHOUT any network call.
 //
-// The model is constrained to the three nuanced sentiment classes the cheap
-// layers can't separate: positive | negative | neutral. Compliance (unsubscribe)
-// and automation (auto_reply / out_of_office) are already settled deterministically
-// upstream and are intentionally NOT in the model's output space.
+// The model is constrained to human-action classes. Compliance (unsubscribe)
+// and automation (auto_reply / out_of_office) are already settled upstream and
+// are intentionally NOT in the model's output space.
 
 // modelTimeout bounds the single Layer-3 completion.
 const modelTimeout = 8 * time.Second
 
-const modelSystemPrompt = "You classify the sentiment of a reply to a cold sales email. " +
-	"Reply with exactly one lowercase word and nothing else: positive (interested / wants to talk), " +
-	"negative (rejection / not interested), or neutral (a question, deferral, or anything unclear). " +
-	"Do not explain."
+const modelSystemPrompt = "Classify the latest human reply to a cold sales email into one action label. " +
+	"Return strict JSON only: {\"class\":\"positive|negative|question|wrong_person|bad_timing|referral|neutral\",\"confidence\":0.0}. " +
+	"Use positive for interest in a call/demo/more info, negative for a hard no/not interested, question for pricing/details/clarification, " +
+	"wrong_person when the recipient says they are not responsible or not the right contact, bad_timing for not now/circle back later, " +
+	"referral when they name or copy someone else to contact, neutral when unclear. Do not classify quoted prior email text."
 
 // ModelClassifyFunc runs one platform LLM completion for Layer 3: given the
 // system + user prompt it returns the model's raw text. The app mains adapt
@@ -72,32 +73,76 @@ func classifyModel(ctx context.Context, in Input) (Result, bool) {
 		return Result{}, false
 	}
 
-	switch normalizeModelLabel(out) {
+	class, confidence := normalizeModelVerdict(out)
+	switch class {
 	case ClassPositive:
-		return Result{Class: ClassPositive, Confidence: 0.7, Source: SourceModel}, true
+		return Result{Class: ClassPositive, Confidence: confidence, Source: SourceModel}, true
 	case ClassNegative:
-		return Result{Class: ClassNegative, Confidence: 0.7, Source: SourceModel}, true
+		return Result{Class: ClassNegative, Confidence: confidence, Source: SourceModel}, true
+	case ClassQuestion:
+		return Result{Class: ClassQuestion, Confidence: confidence, Source: SourceModel}, true
+	case ClassWrongPerson:
+		return Result{Class: ClassWrongPerson, Confidence: confidence, Source: SourceModel}, true
+	case ClassBadTiming:
+		return Result{Class: ClassBadTiming, Confidence: confidence, Source: SourceModel}, true
+	case ClassReferral:
+		return Result{Class: ClassReferral, Confidence: confidence, Source: SourceModel}, true
 	case ClassNeutral:
-		return Result{Class: ClassNeutral, Confidence: 0.6, Source: SourceModel}, true
+		return Result{Class: ClassNeutral, Confidence: confidence, Source: SourceModel}, true
 	default:
 		return Result{}, false
 	}
 }
 
-// normalizeModelLabel reduces the model's free text to one of the three allowed
-// labels, tolerating stray punctuation/whitespace. Anything else is rejected so
-// the caller falls back to "unknown".
-func normalizeModelLabel(s string) string {
+type modelVerdict struct {
+	Class      string  `json:"class"`
+	Confidence float64 `json:"confidence"`
+}
+
+// normalizeModelVerdict reduces a strict-JSON model response to an allowlisted
+// label. A code-fenced JSON block is tolerated because several
+// OpenAI-compatible/local backends still wrap JSON despite the prompt, but bare
+// labels are rejected: the classifier contract is JSON-only so a provider drift
+// cannot silently widen the output shape.
+func normalizeModelVerdict(s string) (string, float64) {
 	s = strings.ToLower(strings.TrimSpace(s))
-	s = strings.Trim(s, ".\"' \n\t")
-	switch {
-	case strings.HasPrefix(s, ClassPositive):
+	s = strings.TrimPrefix(s, "```json")
+	s = strings.TrimPrefix(s, "```")
+	s = strings.TrimSuffix(s, "```")
+	s = strings.TrimSpace(s)
+	var v modelVerdict
+	if err := json.Unmarshal([]byte(s), &v); err == nil {
+		return normalizeAllowedClass(v.Class), normalizeConfidence(v.Confidence)
+	}
+	return "", 0
+}
+
+func normalizeAllowedClass(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.Trim(s, ".\"' \n	")
+	switch s {
+	case ClassPositive:
 		return ClassPositive
-	case strings.HasPrefix(s, ClassNegative):
+	case ClassNegative:
 		return ClassNegative
-	case strings.HasPrefix(s, ClassNeutral):
+	case ClassQuestion:
+		return ClassQuestion
+	case ClassWrongPerson:
+		return ClassWrongPerson
+	case ClassBadTiming:
+		return ClassBadTiming
+	case ClassReferral:
+		return ClassReferral
+	case ClassNeutral:
 		return ClassNeutral
 	default:
 		return ""
 	}
+}
+
+func normalizeConfidence(v float64) float64 {
+	if v <= 0 || v > 1 {
+		return 0.7
+	}
+	return v
 }

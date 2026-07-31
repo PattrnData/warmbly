@@ -258,10 +258,14 @@ type BranchCondition struct {
 	//   "not_opened" | "not_clicked" | "not_replied",
 	// plus the reply-classification fields (operator "ever", no Value), read
 	// from campaign_contact_progress.reply_class:
-	//   "reply_positive"  — reply_class is positive
-	//   "reply_negative"  — reply_class is negative
-	//   "reply_neutral"   — reply_class is neutral
-	//   "reply_automated" — reply_class is auto_reply OR out_of_office
+	//   "reply_positive"     — reply_class is positive
+	//   "reply_negative"     — reply_class is negative
+	//   "reply_neutral"      — reply_class is neutral
+	//   "reply_question"     — reply_class is question
+	//   "reply_wrong_person" — reply_class is wrong_person
+	//   "reply_bad_timing"   — reply_class is bad_timing
+	//   "reply_referral"     — reply_class is referral
+	//   "reply_automated"    — reply_class is auto_reply OR out_of_office
 	// IMPORTANT: the plain "replied"/"not_replied" fields IGNORE automated
 	// replies (auto_reply / out_of_office) — only a human reply sets replied_at,
 	// so a vacation autoresponder never trips "replied" or stop_on_reply. Use the

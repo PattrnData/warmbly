@@ -24,6 +24,10 @@ export type BranchField =
     | "reply_positive"
     | "reply_negative"
     | "reply_neutral"
+    | "reply_question"
+    | "reply_wrong_person"
+    | "reply_bad_timing"
+    | "reply_referral"
     | "reply_automated"
     // The AI step that owns this branch stored this label for the contact
     // (campaign_contact_progress.ai_label). Operator is "is"; the label rides
@@ -37,6 +41,10 @@ export const REPLY_BRANCH_FIELDS: BranchField[] = [
     "reply_positive",
     "reply_negative",
     "reply_neutral",
+    "reply_question",
+    "reply_wrong_person",
+    "reply_bad_timing",
+    "reply_referral",
     "reply_automated",
 ];
 
@@ -58,6 +66,10 @@ export const INSTANT_CAPABLE_FIELDS: BranchField[] = [
     "reply_positive",
     "reply_negative",
     "reply_neutral",
+    "reply_question",
+    "reply_wrong_person",
+    "reply_bad_timing",
+    "reply_referral",
     "reply_automated",
     "opened",
     "clicked",
@@ -104,6 +116,10 @@ export const BRANCH_FIELD_LABELS: Record<BranchField, string> = {
     reply_positive: "replied: positive",
     reply_negative: "replied: negative",
     reply_neutral: "replied: neutral",
+    reply_question: "replied: question",
+    reply_wrong_person: "replied: wrong person",
+    reply_bad_timing: "replied: bad timing",
+    reply_referral: "replied: referral",
     reply_automated: "auto-reply / out of office",
     ai_label: "AI label is",
 };

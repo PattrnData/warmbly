@@ -37,6 +37,7 @@ type OAuthCredentials struct {
 	AccessToken  string
 	RefreshToken string
 	ExpiresAt    time.Time
+	AppOnly      bool
 }
 
 type EmailRepository interface {
@@ -469,12 +470,12 @@ func (r *emailRepository) Search(ctx context.Context, orgID, search string, curs
 
 	query := `
 		SELECT
-		 ea.id, ea.email, ea.name, ea.signature_plain, ea.signature_html, ea.signature_sync, ea.signature_code,
+		 ea.id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 	 	 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
-		 ea.min_wait_time, ea.reply_to, ea.tracking_domain, ea.tracking_domain_verified, ea.tracking_domain_verified_at,
-		 ea.auth_state, ea.auth_spf, ea.auth_dkim, ea.auth_dmarc, ea.auth_dmarc_policy, ea.auth_reason, ea.auth_checked_at,
+		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at,
+		 COALESCE(ea.auth_state, 'unknown'), ea.auth_spf, ea.auth_dkim, ea.auth_dmarc, COALESCE(ea.auth_dmarc_policy, ''), COALESCE(ea.auth_reason, ''), ea.auth_checked_at,
 		 ea.warmup, ea.warmup_paused_at, ea.warmup_base,
-		 ea.warmup_max, ea.warmup_increase, ea.warmup_start_time, ea.warmup_end_time, ea.warmup_days,
+		 ea.warmup_max, ea.warmup_increase, COALESCE(ea.warmup_start_time::text, ''), COALESCE(ea.warmup_end_time::text, ''), ea.warmup_days,
 		 ea.created_at, ea.updated_at,
 		 COALESCE(
 			array_agg(eat.tag_id) FILTER (WHERE eat.tag_id IS NOT NULL), '{}'
@@ -591,12 +592,12 @@ func (r *emailRepository) Search(ctx context.Context, orgID, search string, curs
 func (r *emailRepository) Get(ctx context.Context, orgID, emailAccountID string) (*models.Email, *errx.Error) {
 	query := `
 		SELECT
-		ea.id, ea.email, ea.name, ea.signature_plain, ea.signature_html, ea.signature_sync, ea.signature_code,
+		ea.id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 		 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
-		 ea.min_wait_time, ea.reply_to, ea.tracking_domain, ea.tracking_domain_verified, ea.tracking_domain_verified_at,
-		 ea.auth_state, ea.auth_spf, ea.auth_dkim, ea.auth_dmarc, ea.auth_dmarc_policy, ea.auth_reason, ea.auth_checked_at,
+		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at,
+		 COALESCE(ea.auth_state, 'unknown'), ea.auth_spf, ea.auth_dkim, ea.auth_dmarc, COALESCE(ea.auth_dmarc_policy, ''), COALESCE(ea.auth_reason, ''), ea.auth_checked_at,
 		 ea.warmup, ea.warmup_paused_at, ea.warmup_base,
-		 ea.warmup_max, ea.warmup_increase, ea.warmup_start_time, ea.warmup_end_time, ea.warmup_days,
+		 ea.warmup_max, ea.warmup_increase, COALESCE(ea.warmup_start_time::text, ''), COALESCE(ea.warmup_end_time::text, ''), ea.warmup_days,
 		 ea.created_at, ea.updated_at,
 		 COALESCE(array_agg(eat.tag_id) FILTER (WHERE eat.tag_id IS NOT NULL), '{}') AS tags
 		FROM email_accounts ea
@@ -1067,17 +1068,22 @@ func (r *emailRepository) SetWarmupLifecycle(ctx context.Context, userID, emailA
 		return nil, errx.ErrNotFound
 	}
 
-	return r.Get(ctx, userID, emailAccountID)
+	accountID, parseErr := uuid.Parse(emailAccountID)
+	if parseErr != nil {
+		return nil, errx.ErrUuid
+	}
+
+	return r.GetByID(ctx, accountID)
 }
 
 func (r *emailRepository) GetByID(ctx context.Context, emailAccountID uuid.UUID) (*models.Email, *errx.Error) {
 	query := `
 		SELECT
-		 ea.id, ea.user_id, ea.organization_id, ea.worker_id, ea.email, ea.name, ea.signature_plain, ea.signature_html, ea.signature_sync, ea.signature_code,
+		 ea.id, ea.user_id, ea.organization_id, ea.worker_id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 		 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
-		 ea.min_wait_time, ea.reply_to, ea.tracking_domain, ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
-		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, ea.warmup_tag, ea.warmup_pool_type,
-		 ea.warmup_start_time, ea.warmup_end_time, ea.warmup_days, ea.timezone,
+		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
+		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, COALESCE(ea.warmup_tag, ''), COALESCE(ea.warmup_pool_type, ''),
+		 COALESCE(ea.warmup_start_time::text, ''), COALESCE(ea.warmup_end_time::text, ''), ea.warmup_days, COALESCE(ea.timezone, ''),
 		 ea.created_at, ea.updated_at,
 		 COALESCE(array_agg(eat.tag_id) FILTER (WHERE eat.tag_id IS NOT NULL), '{}') AS tags
 		FROM email_accounts ea
@@ -1114,11 +1120,11 @@ func (r *emailRepository) GetByTags(ctx context.Context, userID string, tags []s
 
 	query := `
 		SELECT DISTINCT ON (ea.id)
-		 ea.id, ea.user_id, ea.email, ea.name, ea.signature_plain, ea.signature_html, ea.signature_sync, ea.signature_code,
+		 ea.id, ea.user_id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 		 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
-		 ea.min_wait_time, ea.reply_to, ea.tracking_domain, ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
-		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, ea.warmup_tag,
-		 ea.warmup_start_time, ea.warmup_end_time, ea.warmup_days, ea.timezone,
+		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
+		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, COALESCE(ea.warmup_tag, ''),
+		 COALESCE(ea.warmup_start_time::text, ''), COALESCE(ea.warmup_end_time::text, ''), ea.warmup_days, COALESCE(ea.timezone, ''),
 		 ea.created_at, ea.updated_at
 		FROM email_accounts ea
 		JOIN email_tags eat ON eat.email_id = ea.id
@@ -1162,11 +1168,11 @@ func (r *emailRepository) GetByTags(ctx context.Context, userID string, tags []s
 func (r *emailRepository) GetAllActiveByUser(ctx context.Context, userID string) ([]models.Email, *errx.Error) {
 	query := `
 		SELECT
-		 ea.id, ea.user_id, ea.email, ea.name, ea.signature_plain, ea.signature_html, ea.signature_sync, ea.signature_code,
+		 ea.id, ea.user_id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 		 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
-		 ea.min_wait_time, ea.reply_to, ea.tracking_domain, ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
-		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, ea.warmup_tag,
-		 ea.warmup_start_time, ea.warmup_end_time, ea.warmup_days, ea.timezone,
+		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
+		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, COALESCE(ea.warmup_tag, ''),
+		 COALESCE(ea.warmup_start_time::text, ''), COALESCE(ea.warmup_end_time::text, ''), ea.warmup_days, COALESCE(ea.timezone, ''),
 		 ea.created_at, ea.updated_at
 		FROM email_accounts ea
 		WHERE ea.user_id = $1
@@ -1220,11 +1226,11 @@ type CampaignSenderAccount struct {
 func (r *emailRepository) GetByCampaignSenders(ctx context.Context, userID string, campaignID uuid.UUID) ([]CampaignSenderAccount, *errx.Error) {
 	query := `
 		SELECT
-		 ea.id, ea.user_id, ea.email, ea.name, ea.signature_plain, ea.signature_html, ea.signature_sync, ea.signature_code,
+		 ea.id, ea.user_id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 		 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
-		 ea.min_wait_time, ea.reply_to, ea.tracking_domain, ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
-		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, ea.warmup_tag,
-		 ea.warmup_start_time, ea.warmup_end_time, ea.warmup_days, ea.timezone,
+		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
+		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, COALESCE(ea.warmup_tag, ''),
+		 COALESCE(ea.warmup_start_time::text, ''), COALESCE(ea.warmup_end_time::text, ''), ea.warmup_days, COALESCE(ea.timezone, ''),
 		 ea.created_at, ea.updated_at,
 		 cs.weight, cs.rotation_position, cs.last_sent_at
 		FROM email_accounts ea
@@ -1379,6 +1385,7 @@ func (r *emailRepository) GetOAuthCredentials(ctx context.Context, emailAccountI
 		AccessToken:  decryptedAccessToken,
 		RefreshToken: decryptedRefreshToken,
 		ExpiresAt:    expiresAt,
+		AppOnly:      decryptedRefreshToken == models.GraphAppOnlyRefreshToken,
 	}, nil
 }
 

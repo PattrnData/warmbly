@@ -225,7 +225,7 @@ func main() {
 	// AI automation nodes + reply-classifier Layer 3 run in THIS process (reply /
 	// warmup / bounce events dispatch here). Build the credit ledger + provider so
 	// the ai_step / ai_switch nodes can charge + call, and so the classifier's
-	// optional model layer rides the same OpenAI-first provider.
+	// optional model layer rides the same Warmbly AI provider.
 	creditRepoC := repository.NewCreditRepository(primaryDB)
 	aiSettingsRepoC := repository.NewAISettingsRepository(primaryDB)
 	creditServiceC := credits.NewService(creditRepoC, aiSettingsRepoC, redisCache)
@@ -240,7 +240,8 @@ func main() {
 		cfg.GetStringOptional(ctx, "SEARCH_API_URL", "search/api_url", ""),
 		cfg.GetSecretOptional(ctx, "SEARCH_API_KEY", "search/api_key", ""),
 	)
-	// Provider selection mirrors the backend: AI_PROVIDER preset + AI_* vars.
+	// Provider selection mirrors the backend: deployed Warmbly uses the shared
+	// Ollama endpoint via AI_PROVIDER=ollama + AI_BASE_URL.
 	if cfgAI, rerr := generation.Resolve(generation.ProviderSettings{
 		Provider:   cfg.GetStringOptional(ctx, "AI_PROVIDER", "ai_provider", ""),
 		APIKey:     cfg.GetSecretOptional(ctx, "AI_API_KEY", "ai_api_key", ""),
@@ -257,9 +258,10 @@ func main() {
 	}
 	integrationServiceC.SetAI(aiProviderC, creditServiceC)
 	integrationServiceC.SetAISearch(aiSearchC)
+	replyClassifierModel := cfg.GetStringOptional(ctx, "AI_MODEL_REPLY", "ai_model_reply", "")
 	if aiProviderC != nil {
 		replyclassify.SetModelClassifier(func(ctx context.Context, system, user string) (string, error) {
-			res, err := aiProviderC.Complete(ctx, generation.CompletionRequest{System: system, Prompt: user, MaxTokens: 16, Temperature: generation.Deterministic()})
+			res, err := aiProviderC.Complete(ctx, generation.CompletionRequest{System: system, Prompt: user, Model: replyClassifierModel, MaxTokens: 128, JSONMode: true, Temperature: generation.Deterministic()})
 			if err != nil {
 				return "", err
 			}
@@ -315,7 +317,7 @@ func main() {
 	var notifEmail notification.EmailSender
 	if emailCfg, ecErr := cfg.LoadEmailConfig(ctx); ecErr == nil {
 		if smtpCfg := cfg.LoadSMTPConfig(ctx); smtpCfg != nil {
-			notifEmail = notify.NewSMTPEmailNotificationService(emailCfg.EmailName, emailCfg.EmailAddress, smtpCfg.Host, smtpCfg.Port)
+			notifEmail = notify.NewSMTPEmailNotificationService(emailCfg.EmailName, emailCfg.EmailAddress, smtpCfg.Host, smtpCfg.Port, smtpCfg.Username, smtpCfg.Password)
 		} else if ses, sErr := notify.NewEmailNotficiationService(ctx, emailCfg.EmailName, emailCfg.EmailAddress); sErr == nil {
 			notifEmail = ses
 		}

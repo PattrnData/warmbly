@@ -1,6 +1,9 @@
 package msgraph
 
 import (
+	"net/url"
+
+	"golang.org/x/oauth2/clientcredentials"
 	"slices"
 	"strings"
 	"testing"
@@ -93,5 +96,56 @@ func TestToEmailData_MappingAndFlags(t *testing.T) {
 	}
 	if len(d.From) != 1 || d.From[0] != "Alice <a@b.com>" {
 		t.Errorf("from formatting: %v", d.From)
+	}
+}
+
+func TestClientUsesMePathsForDelegatedMailboxes(t *testing.T) {
+	c := &Client{}
+	if got, want := c.mailboxBaseURL(), graphBase+"/me"; got != want {
+		t.Fatalf("delegated mailbox base = %q, want %q", got, want)
+	}
+	if got, want := c.messageURL("abc/def"), graphBase+"/me/messages/abc%2Fdef"; got != want {
+		t.Fatalf("delegated message url = %q, want %q", got, want)
+	}
+}
+
+func TestClientUsesUsersPathsForAppOnlyMailboxTarget(t *testing.T) {
+	c := &Client{MailboxUserID: "James.Smith+shared@example.com"}
+	if got, want := c.mailboxBaseURL(), graphBase+"/users/"+url.PathEscape("James.Smith+shared@example.com"); got != want {
+		t.Fatalf("app-only mailbox base = %q, want %q", got, want)
+	}
+	if got, want := c.messageURL("abc/def"), graphBase+"/users/"+url.PathEscape("James.Smith+shared@example.com")+"/messages/abc%2Fdef"; got != want {
+		t.Fatalf("app-only message url = %q, want %q", got, want)
+	}
+}
+
+func TestInitAppOnlyRequiresMailboxTarget(t *testing.T) {
+	c := &Client{}
+	err := c.InitAppOnly(t.Context(), clientcredentials.Config{
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		TokenURL:     "https://login.microsoftonline.com/tenant/oauth2/v2.0/token",
+		Scopes:       []string{"https://graph.microsoft.com/.default"},
+	}, "")
+	if err == nil {
+		t.Fatal("expected missing mailbox target to fail")
+	}
+}
+
+func TestMailboxBaseTargetsSharedMailboxForDelegatedSharedPayloads(t *testing.T) {
+	c := &Client{Email: "delegate@example.com", MailboxEmail: "Shared Mailbox@example.com"}
+	got := c.mailboxBase()
+	want := graphBase + "/users/Shared%20Mailbox@example.com"
+	if got != want {
+		t.Fatalf("mailboxBase() = %q, want %q", got, want)
+	}
+}
+
+func TestMailboxBaseFallsBackToEmailForLegacyPayloads(t *testing.T) {
+	c := &Client{Email: "sender@example.com"}
+	got := c.mailboxBase()
+	want := graphBase + "/users/sender@example.com"
+	if got != want {
+		t.Fatalf("mailboxBase() = %q, want %q", got, want)
 	}
 }

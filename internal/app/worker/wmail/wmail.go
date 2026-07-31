@@ -2,6 +2,7 @@ package wmail
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/app/cipher"
@@ -91,7 +92,7 @@ func NewWMail(
 		LastName:  data.LastName,
 		EmailType: data.Type,
 		onEvent: func(jobType models.JobEventType, body any) error {
-			return OnEvent(jobType, data.ID.String(), body)
+			return OnEvent(jobType, workerEventKey(data.ID, jobType), body)
 		},
 
 		Ctx:           mailCtx,
@@ -145,12 +146,17 @@ func NewWMail(
 		}
 		token := data.Graph.Token
 		deltaLinks := data.Graph.DeltaLinks
+		mailboxUserID := data.Graph.MailboxUserID
+		if mailboxUserID == "" {
+			mailboxUserID = data.Email
+		}
 
 		mail.GraphData = &GraphData{
 			Client: &msgraph.Client{
-				Email:     data.Email,
-				FirstName: data.FirstName,
-				LastName:  data.LastName,
+				Email:        data.Email,
+				MailboxEmail: data.Graph.MailboxEmail,
+				FirstName:    data.FirstName,
+				LastName:     data.LastName,
 
 				Cache:      mail.Cache,
 				DeltaLinks: cloneStringMap(deltaLinks),
@@ -165,7 +171,11 @@ func NewWMail(
 			},
 		}
 
-		if err := mail.GraphData.Client.Init(mailCtx, token, data.Cfg); err != nil {
+		if data.Graph.AppOnly {
+			if err := mail.GraphData.Client.InitAppOnly(mailCtx, data.AppOnlyCfg, mailboxUserID); err != nil {
+				return nil, err
+			}
+		} else if err := mail.GraphData.Client.Init(mailCtx, token, data.Cfg); err != nil {
 			return nil, err
 		}
 	case models.InboxProviderSMTPIMAP:
@@ -210,4 +220,14 @@ func NewWMail(
 	}
 
 	return mail, nil
+}
+
+// workerEventKey must be unique per produced job event. NATS JetStream uses the
+// publish key as Nats-Msg-Id for short-window de-duplication; using only the
+// mailbox id drops different events from the same mailbox (for example a
+// NEW_EMAIL emitted beside GRAPH_DELTA_UPDATE), leaving the control plane
+// without an unibox insert. Consumers are idempotent at the row level, so event
+// identity should favor not losing events over cross-event de-dupe.
+func workerEventKey(emailID uuid.UUID, jobType models.JobEventType) string {
+	return fmt.Sprintf("%s:%s:%s", emailID, jobType, uuid.NewString())
 }

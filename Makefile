@@ -369,20 +369,13 @@ CREDENTIALS_KEY_DEV := 0123456789abcdef0123456789abcdef0123456789abcdef012345678
 # CODEC_PROVIDER=json: the worker command/result envelopes carry `any`
 # bodies that Avro cannot serialize, so worker messaging only works on the
 # JSON codec. tracking-events stays Avro (dedicated Avrov2 path).
-# AI provider for dev. Off by default (no provider => the assistant returns a
-# clean 503). Pick a backend with AI_PROVIDER and supply a key + model; the preset
-# fills in the base URL. AI_PROVIDER=ollama runs a free local model with no key.
-#   make backend AI_PROVIDER=ollama                                    # free, local, no key
-#   make backend AI_PROVIDER=openrouter AI_KEY=sk-or-... AI_MODEL=deepseek/deepseek-chat
-#   make backend AI_PROVIDER=groq AI_KEY=gsk_... AI_MODEL=openai/gpt-oss-20b
-#   make backend AI_PROVIDER=openai AI_KEY=sk-...
-# Switch models by changing AI_MODEL (OpenRouter fronts every vendor). AI_FREE=true
-# marks a free model so credits are not charged; ollama sets it automatically.
-AI_PROVIDER ?=
-AI_KEY ?=
+# AI provider for dev. Warmbly AI targets the shared Ollama OpenAI-compatible
+# endpoint by default. Override AI_MODEL only when selecting another Ollama model.
+AI_PROVIDER ?= ollama
+AI_KEY ?= local
 AI_MODEL ?=
-AI_BASE_URL ?=
-AI_FREE ?=
+AI_BASE_URL ?= https://ollama.pattrndata.io/v1
+AI_FREE ?= true
 ifeq ($(AI_PROVIDER),)
 AI_DEV_ENV :=
 else

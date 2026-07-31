@@ -36,6 +36,8 @@ type EmailService interface {
 	// Onboarding flow
 	OAuthStart(ctx context.Context, userID string, orgID *uuid.UUID, provider models.InboxProvider) (*models.EmailOnboardingStartResponse, *errx.Error)
 	OAuthFinish(ctx context.Context, userID, code, state string) (*models.Email, *errx.Error)
+	OnboardOutlookShared(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewSharedOutlookMailboxAccount) (*models.Email, *errx.Error)
+	OnboardOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewOutlookAppOnlyMailboxAccount) (*models.Email, *errx.Error)
 	OnboardSMTPIMAP(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewSMTPIMAPAccount) (*models.Email, *errx.Error)
 
 	// Optional: wire in the webhook dispatcher after construction. Once
