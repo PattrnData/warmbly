@@ -411,29 +411,29 @@ Scheduler policy verified in source:
 
 ### Activation stance for Sarah and Colin
 
-Keep Sarah and Colin in `recipient_only` with `warmup=NULL` until a separate owner approval explicitly authorizes an outbound warmup wave. Do not infer approval from the presence of active Outlook accounts, clean risk bands, or default warmup fields.
+Owner correction: Sarah and Colin are intended outbound sender identities under the kiosk licence plus attached shared mailbox method. `recipient_only` with `warmup=NULL` is the current pre-activation safety state, not the target operating model.
 
-Before either Sarah or Colin can become an outbound warmup sender, the same operator window must prove:
+The next gate is therefore not "leave them recipient-only". The next gate is to graduate each mailbox through a controlled Warmbly-native internal sender proof, then enable outbound warmup/campaign sending in approved waves. Before either Sarah or Colin changes role or sends under warmup, the same operator window must prove:
 
 1. `backend`, `consumer`, `worker`, `postgres`, `redis`, `nats`, and `mailpit` are running, with health checks green where available.
 2. `active_warmup_tasks=0`, no retryable due warmup dead letters, and no unreviewed campaign DLQs that could be replayed by the same restart/operator action.
 3. The candidate account is still `active`, `auth=passing`, `risk=clean`, `participant_role=recipient_only`, `health=healthy`, `spam_score=0`, and `blocked_at/blocked_until=NULL` before the role change.
 4. Microsoft Graph read-only smoke succeeds for the candidate mailbox.
-5. The candidate has a completed Warmbly-native internal proof triangle: Warmbly task/message-id, worker send-success log, and Microsoft Graph Sent Items readback for the same RFC `Message-ID`. Sarah currently does **not** have this; Colin has not been attempted in the current proof sequence.
-6. Prospect/cold campaign send, contact import, CRM write, LinkedIn/Unipile, and expansion gates remain closed.
+5. The candidate completes a Warmbly-native internal proof triangle: Warmbly task/message-id, worker send-success log, and Microsoft Graph Sent Items readback for the same RFC `Message-ID`. Sarah currently has a prior proof mismatch to resolve; Colin needs his first proof triangle.
+6. Prospect/cold campaign send, contact import, CRM write, LinkedIn/Unipile, and expansion gates remain closed unless separately approved.
 
-### Pilot caps if owner approval is later granted
+### Pilot caps for first activation wave
 
-If, and only if, owner approval is granted, start Sarah/Colin far below the product defaults:
+Once the proof gate clears for a candidate and owner approval covers the operator window, start Sarah/Colin far below the product defaults, but treat this as an initial ramp, not the long-term capacity target of the kiosk/shared-mailbox method:
 
-| Mailbox | Initial outbound warmup cap | Increase | Pilot ceiling | Minimum spacing | Notes |
+| Mailbox | Initial outbound warmup cap | Increase | Early pilot ceiling | Minimum spacing | Notes |
 |---|---:|---:|---:|---:|---|
-| `sarah@pattrndata.com` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Do not activate until the Sarah Sent Items / worker-log proof mismatch is resolved. |
-| `colin@pattrndata.co.uk` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Do not activate before Colin has his own proof triangle. |
+| `sarah@pattrndata.com` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Resolve Sarah Sent Items / worker-log proof mismatch first, then graduate her to sender. |
+| `colin@pattrndata.co.uk` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Run Colin's first Warmbly-native proof triangle, then graduate him to sender. |
 
-Implementation expectation for a future approved activation: set account-level warmup fields to the pilot values in the same change that enables outbound warmup, rather than relying on existing defaults of `base=10`, `increase=1`, `max=40`, and `min_wait=600`.
+Implementation expectation for an approved activation: set account-level warmup fields to the pilot values in the same change that enables outbound warmup, rather than relying on existing defaults of `base=10`, `increase=1`, `max=40`, and `min_wait=600`.
 
-Do not move above `2/day/mailbox` until all of the following are true for at least 72 hours: no warmup DLQs, no worker send failures, no Graph read failures, no Sent Items mismatches, no non-internal recipients, no spam placement/complaint signals, both candidate participants remain `healthy`, and owner approval explicitly authorizes the next step. The next step should still be capped at `3/day/mailbox`, not the default `10/day`.
+Do not move above `2/day/mailbox` until all of the following are true for at least 72 hours: no warmup DLQs, no worker send failures, no Graph read failures, no Sent Items mismatches, no non-internal recipients during proof, no spam placement/complaint signals, both candidate participants remain `healthy`, and owner approval explicitly authorizes the next step. The next step should still be capped at `3/day/mailbox`, then ramp toward the sender-fleet capacity model only after more mailbox identities and recipient capacity are added and verified.
 
 ### Immediate stop / rollback conditions
 
@@ -448,4 +448,4 @@ Pause the mailbox back to `warmup=NULL` and restore `participant_role=recipient_
 - campaign/cold outreach tasks restart unintentionally during the warmup operator window;
 - the owner revokes approval or the operator window ends without post-activation evidence.
 
-Gate conclusion: Sarah and Colin are currently safe as healthy recipient-only pool members. They are **not** approved as outbound warmup senders. The next safe move is tracker reconciliation and proof-mismatch debugging, not live warmup activation.
+Gate conclusion: Sarah and Colin are currently safe as healthy pre-activation pool members. They are intended outbound sender identities for the kiosk licence plus attached shared mailbox method, but their live warmup/campaign graduation still needs the controlled internal proof triangle and explicit operator-window approval before prospect/cold outreach is opened.
