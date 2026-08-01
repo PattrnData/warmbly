@@ -639,3 +639,44 @@ linkedin_unipile_tables=0
 ```
 
 Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for conservative Warmbly warmup. Sarah and Colin have completed the first proof triangle. James has been activated and has a first warmup task scheduled for Monday morning UTC. Keep prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, additional mailbox expansion, and cap increases closed until James' first task proof and the clean observation window pass.
+
+## Weekend-enabled conservative warmup correction - 2026-08-01
+
+Owner clarified the best-practice scope: campaigns remain weekday-only, but mailbox warmup should run Monday through Sunday under conservative caps. The live configuration was corrected for the current three Pattrn Microsoft 365 shared-mailbox warmup senders only. This did not approve prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, mailbox expansion beyond the current three, or cap increases.
+
+Pre-change readback showed the current three were still weekday-only:
+
+```text
+colin@pattrndata.co.uk | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | passing | clean
+james@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | passing | clean
+sarah@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | passing | clean
+```
+
+The account-level conservative setup was corrected to `warmup_days=127` for all three while preserving the conservative caps and weekday campaign boundary:
+
+```text
+colin@pattrndata.co.uk | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+james@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+sarah@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+```
+
+Because the local task provider reads `tasks.scheduled_at` from the database (`local:<task_id>` handles), the existing one-pending-task-per-mailbox warmup tasks were moved from Monday morning to Sunday morning UTC rather than waiting until Monday:
+
+```text
+james@pattrndata.com   | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-02 07:25:00+00 | local:ec8a732c-e155-4e7a-ad65-e2ef314098ca
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-02 07:47:00+00 | local:1b140a17-57d2-4cc6-8a5c-b741bc79a452
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-02 08:13:00+00 | local:7c159e91-068b-483e-b087-35f99a6bdf53
+```
+
+Post-change safety readback remained clean:
+
+```text
+active_campaigns=0
+campaign_tasks_pending_active=0
+warmup_dlq_due_now=0
+due_pending_warmup_tasks=0
+```
+
+Follow-up proof cron jobs were moved from Monday to Sunday after the new first-task window: Sarah/Colin at `2026-08-02 10:00 UTC`, James at `2026-08-02 10:15 UTC`.
+
+Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for conservative Monday-Sunday Warmbly warmup. Campaign sending remains weekday-only and all outbound prospect/cold campaign gates remain closed pending proof and explicit approval.
