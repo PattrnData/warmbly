@@ -420,7 +420,7 @@ The next gate is therefore not "leave them recipient-only". The next gate is to 
 3. The candidate account is still `active`, `auth=passing`, `risk=clean`, `participant_role=recipient_only`, `health=healthy`, `spam_score=0`, and `blocked_at/blocked_until=NULL` before the role change.
 4. Microsoft Graph read-only smoke succeeds for the candidate mailbox.
 5. The candidate completes a Warmbly-native internal proof triangle: Warmbly task/message-id, worker send-success log, and Microsoft Graph Sent Items readback for the same RFC `Message-ID`. Sarah currently has a prior proof mismatch to resolve; Colin needs his first proof triangle.
-6. Prospect/cold campaign send, contact import, CRM write, LinkedIn/Unipile, and expansion gates remain closed unless separately approved.
+6. Prospect/cold campaign send, contact import, CRM write, and Warmbly account expansion gates remain closed unless separately approved. LinkedIn is a separate outreach lane and is not part of this Warmbly cold-email setup.
 
 ### Pilot caps for first activation wave
 
@@ -452,7 +452,7 @@ Gate conclusion: Sarah and Colin are currently safe as healthy pre-activation po
 
 ## Sarah and Colin smallest warmup-sender activation wave - 2026-08-01
 
-This section records the applied pilot warmup activation wave and post-activation readback from the live Warmbly host. It does not approve any prospect/cold campaign, CRM write, LinkedIn/Unipile action, account expansion, or DLQ replay.
+This section records the applied pilot warmup activation wave and post-activation readback from the live Warmbly host. It does not approve any prospect/cold campaign, CRM write, Warmbly account expansion, or DLQ replay. LinkedIn is a separate outreach lane and is not part of this Warmbly cold-email setup.
 
 ### Scope applied
 
@@ -497,11 +497,11 @@ e200deaf-5fe5-4a3e-909b-095398d0441e | paused | sent_at=2026-08-01 11:40:05.2777
 f85e5019-3282-4ec5-872e-78f4539ff4f5 | paused | sent_at=2026-08-01 11:53:00.210856+00 | replied_at=2026-08-01 11:53:24.973414+00 | reply_class=positive | source=lexicon | confidence=0.8
 ```
 
-LinkedIn/Unipile schema check remained empty on the live DB (`tables matching linkedin/unipile = 0`).
+LinkedIn/Unipile is separate from this Warmbly cold-email setup. The live Warmbly DB has no LinkedIn/Unipile tables (`tables matching linkedin/unipile = 0`), so LinkedIn should be tracked and approved in its own lane rather than on this Warmbly gate.
 
 ### Gates and next expansion/account sorting plan
 
 - Open now: Sarah and Colin pilot warmup sender/receiver role at 1/day each, with first seeded sends not due until Monday morning UK time.
-- Still closed: prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, 12-legacy-user return, 13-kiosk expansion, DLQ replay, and cap increase above 2/day/mailbox.
+- Still closed inside Warmbly cold email: prospect/cold campaign sends, imports, CRM writes, 12-legacy-user return, 13-kiosk expansion, DLQ replay, and cap increase above 2/day/mailbox. LinkedIn is separate and should not be bundled into this Warmbly gate.
 - Immediate monitoring: verify first Monday warmup tasks individually by Warmbly task state, worker send-success log, Microsoft Graph Sent Items readback, and no unexpected recipients.
 - Next expansion/account sorting: keep James as recipient-only during the first Sarah/Colin pilot window; sort additional mailbox/account expansion only after 72 hours with no warmup DLQs, no Graph failures, no worker failures, no Sent Items mismatches, and owner approval for the next cap/account wave.
