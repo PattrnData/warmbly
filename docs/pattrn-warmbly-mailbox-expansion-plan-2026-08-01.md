@@ -145,19 +145,19 @@ After owner approval for the seven additional sender identities, the James licen
 | `maya@pattrndata.com` | Maya \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
 | `priya@pattrndata.co.uk` | Priya \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
 | `oliver@pattrndata.co.uk` | Oliver \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
-| `alex@pattrndata.ai` | Alex \| Pattrn Data | outlook / active | failing | clean | off | recipient_only | true |
-| `sophie@pattrndata.ai` | Sophie \| Pattrn Data | outlook / active | failing | clean | off | recipient_only | true |
+| `alex@pattrndata.ai` | Alex \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
+| `sophie@pattrndata.ai` | Sophie \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
 
-Readback count summary: `10` Warmbly rows, `10` active Outlook rows, `3` sender/receiver rows, `7` recipient-only rows.
+Readback count summary after DMARC verification: `10` Warmbly rows, `10` active Outlook rows, `10` auth-passing rows, `3` sender/receiver rows, `7` recipient-only rows.
 
 A direct DB repair was required after the seven new app-only rows were inserted with unencrypted app-only token sentinel values. The repair copied the already-encrypted James app-only token sentinel into the seven new OAuth rows; token lengths now match James and backend reconciler warnings stopped in the post-repair window. No secret values were printed or recorded.
 
 Safety counters stayed closed: `0` active campaigns, `0` pending/active campaign tasks, `0` due warmup tasks, and `0` due warmup DLQs.
 
-Current blocker before the `pattrndata.ai` identities can become senders: Warmbly DNS auth sweep reports `pattrndata.ai` as failing because DMARC is missing/unverifiable. SPF and DKIM records are visible, but `_dmarc.pattrndata.ai` must be added or those two identities should be replaced with `.com`/`.co.uk` identities before activation.
+The `pattrndata.ai` DMARC blocker was resolved after `_dmarc.pattrndata.ai` propagated. DNS readback showed SPF, DKIM, and DMARC present with DMARC policy `quarantine`, and Warmbly auth readback now shows Alex and Sophie as `passing` while still `recipient_only` with warmup off.
 
 The first new scheduled warmup tasks for the current sender/receiver trio remain pending for `2026-08-02` UTC: James at `07:25`, Colin at `07:47`, and Sarah at `08:13`. The full proof triangle remains open until those tasks complete and are verified via DB completed task + worker send-success + Graph Sent Items exact Message-ID.
 
 ## Immediate next action
 
-Resolve the `pattrndata.ai` DMARC gate before treating Alex/Sophie as warmup senders. Either add `_dmarc.pattrndata.ai` in DNS and rerun the Warmbly auth sweep, or approve replacement identities on `pattrndata.com`/`pattrndata.co.uk`. Keep all seven new rows `recipient_only` with warmup off until that decision and the James proof triangle pass.
+Keep all seven new rows `recipient_only` with warmup off until the James proof triangle passes. After proof, the next approval gate is whether to promote a small named subset of the seven new identities from `recipient_only` to `sender_receiver` under conservative warmup caps.
