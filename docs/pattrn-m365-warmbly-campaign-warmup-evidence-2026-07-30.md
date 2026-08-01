@@ -449,3 +449,59 @@ Pause the mailbox back to `warmup=NULL` and restore `participant_role=recipient_
 - the owner revokes approval or the operator window ends without post-activation evidence.
 
 Gate conclusion: Sarah and Colin are currently safe as healthy pre-activation pool members. They are intended outbound sender identities for the kiosk licence plus attached shared mailbox method, but their live warmup/campaign graduation still needs the controlled internal proof triangle and explicit operator-window approval before prospect/cold outreach is opened.
+
+## Sarah and Colin smallest warmup-sender activation wave - 2026-08-01
+
+This section records the applied pilot warmup activation wave and post-activation readback from the live Warmbly host. It does not approve any prospect/cold campaign, CRM write, LinkedIn/Unipile action, account expansion, or DLQ replay.
+
+### Scope applied
+
+- Mailboxes changed: `sarah@pattrndata.com`, `colin@pattrndata.co.uk`.
+- Pool role changed from `recipient_only` to `sender_receiver` for those two mailboxes only.
+- Warmup fields were set conservatively below product defaults: `warmup_base=1`, `warmup_max=2`, `warmup_increase=0`, `min_wait_time=3600`, `warmup_days=62`, `warmup_pool_type=premium`.
+- Exactly one local warmup task was seeded per activated mailbox, scheduled for the next weekday morning Europe/London: Sarah at `2026-08-03 07:13:00+00`, Colin at `2026-08-03 07:41:00+00`.
+- `james@pattrndata.com` remained `recipient_only` with `warmup=NULL`.
+
+### Post-activation live readback
+
+Service state observed: `backend`, `consumer`, `mailpit`, `nats`, `postgres`, `realtime`, `redis`, `tracking`, `web`, and `worker` were running; health checks were healthy where exposed.
+
+```text
+colin@pattrndata.co.uk | outlook | active | has_worker=true | warmup=2026-08-01 12:53:27.930142 | min_wait_time=3600 | warmup_base=1 | warmup_max=2 | warmup_increase=0 | warmup_days=62 | premium | clean | passing | sender_receiver | healthy | spam_score=0 | blocked_at=NULL
+james@pattrndata.com   | outlook | active | has_worker=true | warmup=NULL                       | min_wait_time=600  | warmup_base=10 | warmup_max=40 | warmup_increase=1 | warmup_days=0  | premium | clean | passing | recipient_only  | healthy | spam_score=0 | blocked_at=NULL
+sarah@pattrndata.com   | outlook | active | has_worker=true | warmup=2026-08-01 12:53:27.930142 | min_wait_time=3600 | warmup_base=1 | warmup_max=2 | warmup_increase=0 | warmup_days=62 | premium | clean | passing | sender_receiver | healthy | spam_score=0 | blocked_at=NULL
+```
+
+Seeded warmup task readback:
+
+```text
+sarah@pattrndata.com   | cf3d426e-21d5-4567-a8bb-63cd51641e01 | pending | 2026-08-03 07:13:00+00
+colin@pattrndata.co.uk | 1ee05408-2f01-462c-b491-9ebda8cbf32b | pending | 2026-08-03 07:41:00+00
+```
+
+Safety checks after activation:
+
+```text
+due_warmup_tasks_now=0
+completed_warmup_since_activation=0
+active_campaigns=0
+active_campaign_tasks=0
+due_pending_warmup_dlq=0
+campaigns_created_since_activation=0
+```
+
+Proof reply readback remains intact and paused:
+
+```text
+e200deaf-5fe5-4a3e-909b-095398d0441e | paused | sent_at=2026-08-01 11:40:05.277757+00 | replied_at=2026-08-01 11:40:24.718164+00 | reply_class=positive | source=lexicon | confidence=0.8
+f85e5019-3282-4ec5-872e-78f4539ff4f5 | paused | sent_at=2026-08-01 11:53:00.210856+00 | replied_at=2026-08-01 11:53:24.973414+00 | reply_class=positive | source=lexicon | confidence=0.8
+```
+
+LinkedIn/Unipile schema check remained empty on the live DB (`tables matching linkedin/unipile = 0`).
+
+### Gates and next expansion/account sorting plan
+
+- Open now: Sarah and Colin pilot warmup sender/receiver role at 1/day each, with first seeded sends not due until Monday morning UK time.
+- Still closed: prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, 12-legacy-user return, 13-kiosk expansion, DLQ replay, and cap increase above 2/day/mailbox.
+- Immediate monitoring: verify first Monday warmup tasks individually by Warmbly task state, worker send-success log, Microsoft Graph Sent Items readback, and no unexpected recipients.
+- Next expansion/account sorting: keep James as recipient-only during the first Sarah/Colin pilot window; sort additional mailbox/account expansion only after 72 hours with no warmup DLQs, no Graph failures, no worker failures, no Sent Items mismatches, and owner approval for the next cap/account wave.
