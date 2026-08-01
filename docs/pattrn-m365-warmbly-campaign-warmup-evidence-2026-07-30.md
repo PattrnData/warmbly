@@ -350,3 +350,102 @@ Initial caps and pauses:
 - No prospect recipients in warmup seed/partner scope.
 - Immediate pause/quarantine triggers: Graph auth/read failure, worker send failure, new DLQ, non-internal recipient evidence, Sent Items mismatch, storage/DEK failure, or any owner revocation.
 - Post-activation evidence must show exactly which rows changed, which messages were sent, where they were found in Graph, and that no cold/prospect campaign was touched.
+
+## Sarah and Colin conservative warmup policy - 2026-08-01
+
+This section is a policy/evidence update only. It does **not** approve, start, resume, or replay warmup.
+
+### Fresh read-only inventory
+
+Live host/path checked: `relay.pattrndata.io` backing repo `/home/hl-mailserver/projects/warmbly`.
+
+Service state observed before policy drafting:
+
+```text
+backend    running   healthy
+consumer   running
+mailpit    running   healthy
+nats       running   healthy
+postgres   running   healthy
+realtime   running   healthy
+redis      running   healthy
+tracking   running   healthy
+web        running
+worker     running
+```
+
+Relevant schema facts from the live database:
+
+```text
+email_accounts columns include: warmup, campaign_limit, min_wait_time, warmup_base, warmup_max, warmup_increase, warmup_reply_rate, warmup_pool_type, risk_band, auth_state
+warmup_pool_participants columns include: participant_role, blocked_at, blocked_until, spam_score, health_state, last_health_score, last_health_reason
+warmup_pool_participants has no per-participant daily_limit/status column; sender caps are account-level warmup fields plus scheduler policy.
+```
+
+Current Pattrn sender/account state:
+
+```text
+colin@pattrndata.co.uk|status=active|warmup=NULL|campaign_limit=50|min_wait=600|base=10|max=40|inc=1|reply_rate=30|pool_type=premium|risk=clean|auth=passing
+james@pattrndata.com|status=active|warmup=NULL|campaign_limit=50|min_wait=600|base=10|max=40|inc=1|reply_rate=30|pool_type=premium|risk=clean|auth=passing
+sarah@pattrndata.com|status=active|warmup=NULL|campaign_limit=50|min_wait=600|base=10|max=40|inc=1|reply_rate=30|pool_type=premium|risk=clean|auth=passing
+```
+
+Current warmup-pool state:
+
+```text
+colin@pattrndata.co.uk|pool=Premium warmup pool|role=recipient_only|blocked_at=NULL|blocked_until=NULL|health=healthy|score=0|spam=0
+james@pattrndata.com|pool=Premium warmup pool|role=recipient_only|blocked_at=NULL|blocked_until=NULL|health=healthy|score=0|spam=0
+sarah@pattrndata.com|pool=Premium warmup pool|role=recipient_only|blocked_at=NULL|blocked_until=NULL|health=healthy|score=0|spam=0
+active_warmup_tasks=0
+warmup_tasks_last7d=4
+campaign_tasks_today=4
+```
+
+Scheduler policy verified in source:
+
+- Active warmup normally starts from `warmup_base`, increases by `warmup_increase` per day, and caps at `warmup_max`.
+- Defaults are `base=10`, `increase=1`, `max=40`, but those defaults are not approved for the Sarah/Colin pilot.
+- If a mailbox backs a live campaign, warmup is clamped to at most `5` warmup sends/day.
+- Warmup volume is also capped by eligible recipient capacity, including recipient-only participants, so a small pool should not force repeated same-day sends to the same recipient.
+- `watch` and `throttled` health states reduce volume and widen spacing. `quarantined` and `blocked` participants are not eligible.
+
+### Activation stance for Sarah and Colin
+
+Keep Sarah and Colin in `recipient_only` with `warmup=NULL` until a separate owner approval explicitly authorizes an outbound warmup wave. Do not infer approval from the presence of active Outlook accounts, clean risk bands, or default warmup fields.
+
+Before either Sarah or Colin can become an outbound warmup sender, the same operator window must prove:
+
+1. `backend`, `consumer`, `worker`, `postgres`, `redis`, `nats`, and `mailpit` are running, with health checks green where available.
+2. `active_warmup_tasks=0`, no retryable due warmup dead letters, and no unreviewed campaign DLQs that could be replayed by the same restart/operator action.
+3. The candidate account is still `active`, `auth=passing`, `risk=clean`, `participant_role=recipient_only`, `health=healthy`, `spam_score=0`, and `blocked_at/blocked_until=NULL` before the role change.
+4. Microsoft Graph read-only smoke succeeds for the candidate mailbox.
+5. The candidate has a completed Warmbly-native internal proof triangle: Warmbly task/message-id, worker send-success log, and Microsoft Graph Sent Items readback for the same RFC `Message-ID`. Sarah currently does **not** have this; Colin has not been attempted in the current proof sequence.
+6. Prospect/cold campaign send, contact import, CRM write, LinkedIn/Unipile, and expansion gates remain closed.
+
+### Pilot caps if owner approval is later granted
+
+If, and only if, owner approval is granted, start Sarah/Colin far below the product defaults:
+
+| Mailbox | Initial outbound warmup cap | Increase | Pilot ceiling | Minimum spacing | Notes |
+|---|---:|---:|---:|---:|---|
+| `sarah@pattrndata.com` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Do not activate until the Sarah Sent Items / worker-log proof mismatch is resolved. |
+| `colin@pattrndata.co.uk` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Do not activate before Colin has his own proof triangle. |
+
+Implementation expectation for a future approved activation: set account-level warmup fields to the pilot values in the same change that enables outbound warmup, rather than relying on existing defaults of `base=10`, `increase=1`, `max=40`, and `min_wait=600`.
+
+Do not move above `2/day/mailbox` until all of the following are true for at least 72 hours: no warmup DLQs, no worker send failures, no Graph read failures, no Sent Items mismatches, no non-internal recipients, no spam placement/complaint signals, both candidate participants remain `healthy`, and owner approval explicitly authorizes the next step. The next step should still be capped at `3/day/mailbox`, not the default `10/day`.
+
+### Immediate stop / rollback conditions
+
+Pause the mailbox back to `warmup=NULL` and restore `participant_role=recipient_only` immediately if any of these appear:
+
+- any warmup task is addressed to a prospect, external cold lead, CRM contact, or non-approved recipient;
+- worker send-success correlation or Microsoft Graph Sent Items readback is missing for a pilot message;
+- candidate health changes away from `healthy`, spam score rises above `0`, or `blocked_at`/`blocked_until` becomes non-null;
+- Graph auth/read smoke fails for the candidate or its partner mailbox;
+- any warmup task dead-letters, retries unexpectedly, or exceeds the approved daily cap;
+- storage/DEK preflight fails;
+- campaign/cold outreach tasks restart unintentionally during the warmup operator window;
+- the owner revokes approval or the operator window ends without post-activation evidence.
+
+Gate conclusion: Sarah and Colin are currently safe as healthy recipient-only pool members. They are **not** approved as outbound warmup senders. The next safe move is tracker reconciliation and proof-mismatch debugging, not live warmup activation.
