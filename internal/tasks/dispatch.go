@@ -33,15 +33,37 @@ func (s *tasksService) HandleTask(task *proto.ProcessTask) *errx.Error {
 		return errx.ErrNotFound
 	}
 
-	switch rec.TaskType {
-	case "campaign":
+	switch dispatchKindForTaskType(rec.TaskType) {
+	case dispatchKindCampaign:
 		return s.HandleCampaignTask(task)
-	case "warmup":
+	case dispatchKindWarmup:
 		return s.HandleEmailTask(task)
-	case "user_email":
+	case dispatchKindUserEmail:
 		return s.HandleUserEmailTask(task)
 	default:
 		log.Warn().Str("task_id", taskID.String()).Str("task_type", rec.TaskType).Msg("task dispatch: unknown task type")
 		return errx.New(errx.BadRequest, "unknown task type")
+	}
+}
+
+type dispatchKind string
+
+const (
+	dispatchKindUnknown   dispatchKind = ""
+	dispatchKindCampaign  dispatchKind = "campaign"
+	dispatchKindWarmup    dispatchKind = "warmup"
+	dispatchKindUserEmail dispatchKind = "user_email"
+)
+
+func dispatchKindForTaskType(taskType string) dispatchKind {
+	switch taskType {
+	case "campaign":
+		return dispatchKindCampaign
+	case "warmup":
+		return dispatchKindWarmup
+	case "user_email", "email":
+		return dispatchKindUserEmail
+	default:
+		return dispatchKindUnknown
 	}
 }

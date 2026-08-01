@@ -206,6 +206,7 @@ services:
       BOX_OUTLOOK_CLIENT_ID: ${BOX_OUTLOOK_CLIENT_ID:-}
       BOX_OUTLOOK_TENANT_ID: ${BOX_OUTLOOK_TENANT_ID:-}
       BOX_OUTLOOK_CLIENT_SECRET: ${BOX_OUTLOOK_CLIENT_SECRET:-}
+      WORKER_ID: ${WORKER_ID:-d1984213-3bee-4b17-887f-1d5134b22ce8}
     volumes:
       - blobs:/data/blobs
     depends_on:
