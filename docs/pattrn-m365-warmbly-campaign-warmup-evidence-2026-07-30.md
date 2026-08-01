@@ -565,4 +565,77 @@ colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-0
 sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-03 07:54:09+00
 ```
 
-Current gate conclusion: the first Sarah/Colin warmup proof triangle is complete for both mailboxes. Keep prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, expansion beyond Sarah/Colin, and cap increases closed until a clean observation window and explicit owner approval.
+Current gate conclusion: the first Sarah/Colin warmup proof triangle is complete for both mailboxes. Keep prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, expansion beyond the current approved mailbox set, and cap increases closed until a clean observation window and explicit owner approval.
+
+## James current-three warmup sender expansion - 2026-08-01
+
+Owner clarified that provider-type generality is not in scope. The desired scope is the current three Pattrn Microsoft 365 shared-mailbox accounts for the 14-kiosk plus attached shared-mailbox setup. James was therefore expanded from `recipient_only` to the same conservative outbound warmup sender policy as Sarah and Colin. This did not approve prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, mailbox expansion beyond the current three, or cap increases.
+
+### Preflight
+
+Before changing James, live readback showed:
+
+```text
+sarah@pattrndata.com   | sender_receiver | active | has_worker=true | clean | passing | healthy | spam_score=0
+colin@pattrndata.co.uk | sender_receiver | active | has_worker=true | clean | passing | healthy | spam_score=0
+james@pattrndata.com   | recipient_only  | active | has_worker=true | clean | passing | healthy | spam_score=0 | warmup=NULL
+```
+
+Safety checks before activation:
+
+```text
+active_campaigns=0
+campaign_tasks_pending_active=0
+due_pending_warmup_tasks=0
+james_pending_active_warmup_tasks=0
+warmup_dlq_due_now=0
+linkedin_unipile_tables=0
+```
+
+Microsoft Graph app-only read smoke passed for all three current mailboxes: Sarah, Colin, and James.
+
+### Scope applied
+
+James was changed to match the same conservative pilot warmup policy already applied to Sarah and Colin:
+
+```text
+james@pattrndata.com | warmup=2026-08-01 14:26:48.102817 | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | sender_receiver | healthy | spam_score=0
+```
+
+Exactly one pending local warmup task was seeded for James for the next weekday morning UTC:
+
+```text
+james@pattrndata.com | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-03 07:25:00+00
+```
+
+### Current three-account readback after James expansion
+
+All current three Pattrn M365 shared-mailbox accounts are now active warmup sender/receivers under the conservative cap:
+
+```text
+colin@pattrndata.co.uk | sender_receiver | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | healthy | spam_score=0
+james@pattrndata.com   | sender_receiver | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | healthy | spam_score=0
+sarah@pattrndata.com   | sender_receiver | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | healthy | spam_score=0
+```
+
+Pending warmup tasks for the current three:
+
+```text
+james@pattrndata.com   | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-03 07:25:00+00
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-03 07:53:47+00
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-03 07:54:09+00
+```
+
+Post-change safety readback:
+
+```text
+current_3_sender_receiver=3
+current_3_conservative_caps=3
+active_campaigns=0
+campaign_tasks_pending_active=0
+due_pending_warmup_tasks=0
+warmup_dlq_due_now=0
+linkedin_unipile_tables=0
+```
+
+Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for conservative Warmbly warmup. Sarah and Colin have completed the first proof triangle. James has been activated and has a first warmup task scheduled for Monday morning UTC. Keep prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, additional mailbox expansion, and cap increases closed until James' first task proof and the clean observation window pass.
