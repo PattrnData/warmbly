@@ -14470,8 +14470,13 @@
     "semantic_hash": ""
   },
   "docs/pattrn-warmbly-mailbox-expansion-plan-2026-08-01.md": {
-    "mtime": 1785610079.2674148,
-    "ast_hash": "6593898a0f47d7cc8fd6b5031093ca24",
+    "mtime": 1785613607.6694443,
+    "ast_hash": "ea4050f6949ca7f02d7c538d44b3e848",
+    "semantic_hash": ""
+  },
+  "docs/pattrn-warmbly-james-kiosk-setup-evidence-2026-08-01.md": {
+    "mtime": 1785613573.555676,
+    "ast_hash": "d4d9b92100da841ba5c6f68cf6d7b5af",
     "semantic_hash": ""
   }
 }

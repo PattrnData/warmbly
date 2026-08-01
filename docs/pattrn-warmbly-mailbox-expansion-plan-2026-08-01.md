@@ -32,6 +32,12 @@ The current app-only Graph tenant read sees exactly these three Pattrn mailbox u
 
 No additional `pattrndata.com`, `pattrndata.co.uk`, or `pattrndata.ai` users/mailboxes are currently visible to the Graph app.
 
+### James kiosk proof status
+
+Current James kiosk setup evidence is recorded in `docs/pattrn-warmbly-james-kiosk-setup-evidence-2026-08-01.md`. James is the single licensed kiosk/delegate mailbox in the pilot set: `EXCHANGEDESKLESS enabled=1 consumed=1`, Graph user/inbox HTTP 200, and Warmbly `active`/`passing`/`clean`/`sender_receiver`.
+
+The first James warmup proof task is scheduled for `2026-08-02 07:25:00+00`. Expansion to the other 13 kiosk licences remains gated until that task has the full DB completed-task, worker send-success, and Graph Sent Items exact-Message-ID proof triangle.
+
 ## Expansion target
 
 The business target remains the previously stated **4,000 emails/day** capacity, but only after warmup processing and delivery proof are working cleanly.
