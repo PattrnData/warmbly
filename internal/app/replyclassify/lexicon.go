@@ -9,9 +9,11 @@ import "strings"
 // Order matters and encodes priority:
 //  1. Compliance words (unsubscribe / stop / remove me / take me off) ALWAYS win.
 //     Treating these as anything other than an unsubscribe request is a
-//     compliance risk, so they short-circuit before sentiment.
-//  2. Clear rejection phrases => negative.
-//  3. Clear interest phrases => positive.
+//     compliance risk, so they short-circuit before action routing or sentiment.
+//  2. Action-specific human replies route to referral, wrong_person, bad_timing,
+//     or question before generic sentiment.
+//  3. Clear rejection phrases => negative.
+//  4. Clear interest phrases => positive.
 func classifyLexicon(in Input) (Result, bool) {
 	text := strings.ToLower(strings.TrimSpace(in.Subject + "\n" + in.BodyText))
 	if text == "" {

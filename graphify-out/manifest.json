@@ -3410,8 +3410,8 @@
     "semantic_hash": ""
   },
   "internal/app/replyclassify/lexicon.go": {
-    "mtime": 1785500257.1000853,
-    "ast_hash": "2a72408c7167812c3f18fee314ec9d21",
+    "mtime": 1785585690.9769871,
+    "ast_hash": "4865852f74279d3160c0c224026abdff",
     "semantic_hash": ""
   },
   "internal/app/replyclassify/model.go": {
@@ -14462,6 +14462,11 @@
   "internal/app/consumer/event_worker_result_test.go": {
     "mtime": 1785510878.6346753,
     "ast_hash": "390e798acf7fe9ed75f571a90ad78400",
+    "semantic_hash": ""
+  },
+  "internal/app/replyclassify/priority_matrix_test.go": {
+    "mtime": 1785585778.8464499,
+    "ast_hash": "c313fc1221cb03fe8cba34f193c6ace7",
     "semantic_hash": ""
   }
 }
