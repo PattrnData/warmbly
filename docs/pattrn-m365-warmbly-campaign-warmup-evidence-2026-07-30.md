@@ -503,5 +503,66 @@ LinkedIn/Unipile is separate from this Warmbly cold-email setup. The live Warmbl
 
 - Open now: Sarah and Colin pilot warmup sender/receiver role at 1/day each, with first seeded sends not due until Monday morning UK time.
 - Still closed inside Warmbly cold email: prospect/cold campaign sends, imports, CRM writes, 12-legacy-user return, 13-kiosk expansion, DLQ replay, and cap increase above 2/day/mailbox. LinkedIn is separate and should not be bundled into this Warmbly gate.
-- Immediate monitoring: verify first Monday warmup tasks individually by Warmbly task state, worker send-success log, Microsoft Graph Sent Items readback, and no unexpected recipients.
+- Immediate monitoring completed early after owner approval to accelerate only the existing Sarah/Colin seeded tasks. See the acceleration proof below.
 - Next expansion/account sorting: keep James as recipient-only during the first Sarah/Colin pilot window; sort additional mailbox/account expansion only after 72 hours with no warmup DLQs, no Graph failures, no worker failures, no Sent Items mismatches, and owner approval for the next cap/account wave.
+
+## Sarah and Colin accelerated first warmup task proof - 2026-08-01
+
+Owner approved accelerating the warmup tasks in the Discord cold-email/outreach thread. The live change was scoped to the two already seeded Sarah/Colin warmup tasks only. No new campaign, prospect import, CRM write, LinkedIn/Unipile action, DLQ replay, cap increase, or mailbox expansion was opened.
+
+### Acceleration applied
+
+The existing pending pilot tasks were moved from Monday morning UTC to immediate staggered proof slots:
+
+```text
+sarah@pattrndata.com   | cf3d426e-21d5-4567-a8bb-63cd51641e01 | pending | 2026-08-01 13:32:49.244002+00
+colin@pattrndata.co.uk | 1ee05408-2f01-462c-b491-9ebda8cbf32b | pending | 2026-08-01 13:37:49.244002+00
+```
+
+### Warmbly task and worker-send proof
+
+Both accelerated warmup tasks completed cleanly, each with a persisted RFC `Message-ID` and worker send-success log:
+
+```text
+sarah@pattrndata.com   | cf3d426e-21d5-4567-a8bb-63cd51641e01 | completed | completed_at=2026-08-01 13:32:50.13132+00  | <c5170e7d-5e90-4278-a307-2703c6e55ac5@pattrndata.com>
+colin@pattrndata.co.uk | 1ee05408-2f01-462c-b491-9ebda8cbf32b | completed | completed_at=2026-08-01 13:37:50.117139+00 | <4d37d7d8-acbc-45bb-959f-ecbf277eaadb@pattrndata.co.uk>
+```
+
+Worker logs showed the exact task IDs, warmup flag, recipient, and send-success message IDs:
+
+```text
+cf3d426e-21d5-4567-a8bb-63cd51641e01 | to=[james@pattrndata.com] | is_warmup=true | Email sent successfully | <c5170e7d-5e90-4278-a307-2703c6e55ac5@pattrndata.com>
+1ee05408-2f01-462c-b491-9ebda8cbf32b | to=[james@pattrndata.com] | is_warmup=true | Email sent successfully | <4d37d7d8-acbc-45bb-959f-ecbf277eaadb@pattrndata.co.uk>
+```
+
+### Microsoft Graph Sent Items proof
+
+Microsoft Graph app-only Sent Items readback found one exact `internetMessageId` match per sender:
+
+```text
+sarah@pattrndata.com   | sentitems_matches=1 | sentDateTime=2026-08-01T13:32:50Z | subject="today heads up" | to=[james@pattrndata.com]
+colin@pattrndata.co.uk | sentitems_matches=1 | sentDateTime=2026-08-01T13:37:50Z | subject="Just a thought" | to=[james@pattrndata.com]
+```
+
+Daily warmup stats now show `emails_sent=1`, `emails_replied=0` for each activated mailbox on `2026-08-01`.
+
+### Safety and next tasks after acceleration
+
+Post-proof safety readback:
+
+```text
+active_campaigns=0
+campaigns_created_since_activation=0
+failed_warmup_since_acceleration=0
+warmup_dlq_due_now=0
+linkedin_unipile_tables=0
+```
+
+Warmbly created the next pending warmup task for each sender, both scheduled for Monday morning UTC:
+
+```text
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-03 07:53:47+00
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-03 07:54:09+00
+```
+
+Current gate conclusion: the first Sarah/Colin warmup proof triangle is complete for both mailboxes. Keep prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, expansion beyond Sarah/Colin, and cap increases closed until a clean observation window and explicit owner approval.
