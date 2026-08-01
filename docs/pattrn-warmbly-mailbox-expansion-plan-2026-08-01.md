@@ -131,6 +131,33 @@ This expansion plan does not approve:
 - Any mailbox creation/licence purchase without Microsoft 365 admin approval.
 - Warmbly Cloud shared-pool use without an explicit decision.
 
+## James 1+9 live setup update - 2026-08-01
+
+After owner approval for the seven additional sender identities, the James licence path was expanded from **3 of 10** to **10 of 10 visible mailbox rows in Warmbly**:
+
+| Email | Display | Warmbly provider/status | Auth | Risk | Warmup | Pool role | Worker fresh |
+|---|---|---|---|---|---|---|---:|
+| `james@pattrndata.com` | James \| Pattrn Data | outlook / active | passing | clean | on | sender_receiver | true |
+| `sarah@pattrndata.com` | Sarah \| Pattrn Data | outlook / active | passing | clean | on | sender_receiver | true |
+| `colin@pattrndata.co.uk` | Colin \| Pattrn Data | outlook / active | passing | clean | on | sender_receiver | true |
+| `emma@pattrndata.com` | Emma \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
+| `daniel@pattrndata.com` | Daniel \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
+| `maya@pattrndata.com` | Maya \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
+| `priya@pattrndata.co.uk` | Priya \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
+| `oliver@pattrndata.co.uk` | Oliver \| Pattrn Data | outlook / active | passing | clean | off | recipient_only | true |
+| `alex@pattrndata.ai` | Alex \| Pattrn Data | outlook / active | failing | clean | off | recipient_only | true |
+| `sophie@pattrndata.ai` | Sophie \| Pattrn Data | outlook / active | failing | clean | off | recipient_only | true |
+
+Readback count summary: `10` Warmbly rows, `10` active Outlook rows, `3` sender/receiver rows, `7` recipient-only rows.
+
+A direct DB repair was required after the seven new app-only rows were inserted with unencrypted app-only token sentinel values. The repair copied the already-encrypted James app-only token sentinel into the seven new OAuth rows; token lengths now match James and backend reconciler warnings stopped in the post-repair window. No secret values were printed or recorded.
+
+Safety counters stayed closed: `0` active campaigns, `0` pending/active campaign tasks, `0` due warmup tasks, and `0` due warmup DLQs.
+
+Current blocker before the `pattrndata.ai` identities can become senders: Warmbly DNS auth sweep reports `pattrndata.ai` as failing because DMARC is missing/unverifiable. SPF and DKIM records are visible, but `_dmarc.pattrndata.ai` must be added or those two identities should be replaced with `.com`/`.co.uk` identities before activation.
+
+The first new scheduled warmup tasks for the current sender/receiver trio remain pending for `2026-08-02` UTC: James at `07:25`, Colin at `07:47`, and Sarah at `08:13`. The full proof triangle remains open until those tasks complete and are verified via DB completed task + worker send-success + Graph Sent Items exact Message-ID.
+
 ## Immediate next action
 
-Microsoft 365 admin should create/provision the first additional mailbox batch. Once those mailboxes exist and are licensed/provisioned, rerun the Graph inventory and onboard only the mailboxes with inbox `HTTP 200`.
+Resolve the `pattrndata.ai` DMARC gate before treating Alex/Sophie as warmup senders. Either add `_dmarc.pattrndata.ai` in DNS and rerun the Warmbly auth sweep, or approve replacement identities on `pattrndata.com`/`pattrndata.co.uk`. Keep all seven new rows `recipient_only` with warmup off until that decision and the James proof triangle pass.
