@@ -36,23 +36,30 @@ No additional `pattrndata.com`, `pattrndata.co.uk`, or `pattrndata.ai` users/mai
 
 The business target remains the previously stated **4,000 emails/day** capacity, but only after warmup processing and delivery proof are working cleanly.
 
-Mailbox math for that target:
+Mailbox math for that target, using the previously confirmed cold-outreach operating assumption of **30 sends/day per visible sender identity**:
 
-| Safe per-mailbox daily volume | Mailboxes needed for 4,000/day | With 20% headroom |
-|---:|---:|---:|
-| 40/day | 100 | 120 |
-| 50/day | 80 | 96 |
+| Planning input | Value |
+|---|---:|
+| Daily cold-email target | 4,000/day |
+| Safe volume per visible sender identity | 30/day |
+| Exact visible sender identities needed | 134 |
+| Confirmed kiosk licences model | 14 |
+| Shared mailboxes per kiosk licence | 9 |
+| Visible sender identities per licence path | 10 |
+| Total shared mailboxes at 14 licences | 126 |
+| Total visible sender identities at 14 licences | 140 |
+| Modeled capacity at 30/day | 4,200/day |
 
-So the real operating target is **80 to 100 warmed mailboxes**, with **96 to 120 mailboxes** preferred if we want headroom, throttling room, sick-day capacity, and less pressure on any one account.
+So the real operating target is **14 kiosk licences plus 126 shared mailboxes**, giving **140 visible sender identities** and about **4,200/day** of modeled capacity at 30/day. The extra 200/day is operational headroom, not a reason to push harder.
 
-The 20-mailbox pool is only the first healthy processing milestone, not the final target.
+The 20-mailbox and 40-to-50-mailbox pools are only warmup/health milestones, not the final 4,000/day target.
 
 Recommended staged targets:
 
 1. **Proof gate:** keep the current 3 running long enough to prove scheduled warmup processing, worker send success, Graph Sent Items, and no DLQ/campaign side effects.
 2. **First healthy pool:** 20 total warmup mailboxes.
 3. **Scaling pool:** 40 to 50 total warmup mailboxes once the first pool stays clean.
-4. **4,000/day capacity pool:** 80 to 100 total warmed mailboxes, or 96 to 120 with 20% headroom.
+4. **4,000/day capacity pool:** 14 kiosk licence paths, each with the licensed kiosk mailbox plus 9 shared mailboxes, for 140 total visible sender identities at 30/day.
 
 ## Microsoft 365 admin work needed
 
@@ -102,9 +109,9 @@ Add the next 10 mailboxes. This is the first believable processing pool and the 
 
 Add 20 to 30 more mailboxes after a few days of clean processing and delivery proof. This is the ramp-validation pool.
 
-### Wave 4: get to 80 to 100 total, preferably 96 to 120 with headroom
+### Wave 4: get to the 14-kiosk / 126-shared-mailbox capacity pool
 
-Only after Wave 3 is clean, add enough kiosk/shared-mailbox capacity to support the 4,000/day target. At 40/day this needs 100 warmed mailboxes, or 120 with 20% headroom. At 50/day this needs 80 warmed mailboxes, or 96 with 20% headroom.
+Only after Wave 3 is clean, add enough kiosk/shared-mailbox capacity to support the 4,000/day target. The confirmed model is 14 kiosk licence paths. Each path has the licensed kiosk mailbox plus 9 shared mailboxes, giving 10 visible sender identities per licence path. At 30/day per visible sender, 140 total identities model to 4,200/day.
 
 ## Gates that remain closed
 
