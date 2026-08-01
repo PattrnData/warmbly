@@ -680,3 +680,36 @@ due_pending_warmup_tasks=0
 Follow-up proof cron jobs were moved from Monday to Sunday after the new first-task window: Sarah/Colin at `2026-08-02 10:00 UTC`, James at `2026-08-02 10:15 UTC`.
 
 Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for conservative Monday-Sunday Warmbly warmup. Campaign sending remains weekday-only and all outbound prospect/cold campaign gates remain closed pending proof and explicit approval.
+
+## Classic SaaS warmup ramp correction - 2026-08-01
+
+Owner corrected the previous ultra-conservative cap assumption: Pattrn wants a classic warmup SaaS ramp for the current shared-mailbox warmup senders. Campaigns remain separately gated and weekday-only, but warmup should follow the standard SaaS-style ramp.
+
+The current three Pattrn Microsoft 365 shared-mailbox accounts were updated from proof-only caps to classic warmup caps:
+
+```text
+colin@pattrndata.co.uk | warmup_base=10 | warmup_max=40 | warmup_increase=2 | min_wait_time=600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+james@pattrndata.com   | warmup_base=10 | warmup_max=40 | warmup_increase=2 | min_wait_time=600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+sarah@pattrndata.com   | warmup_base=10 | warmup_max=40 | warmup_increase=2 | min_wait_time=600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+```
+
+Existing pending first warmup tasks were left in place so the local provider keeps the one-pending-task-per-mailbox chain:
+
+```text
+james@pattrndata.com   | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-02 07:25:00+00 | local:ec8a732c-e155-4e7a-ad65-e2ef314098ca
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-02 07:47:00+00 | local:1b140a17-57d2-4cc6-8a5c-b741bc79a452
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-02 08:13:00+00 | local:7c159e91-068b-483e-b087-35f99a6bdf53
+```
+
+Post-change safety readback remained clean:
+
+```text
+active_campaigns=0
+campaign_tasks_pending_active=0
+warmup_dlq_due_now=0
+due_pending_warmup_tasks=0
+```
+
+Operational note: with `warmup_base=10`, `warmup_increase=2`, and `warmup_max=40`, the scheduler will target roughly 10 warmup emails per mailbox per day at start, then ramp by 2/day until capped at 40/day, subject to eligible recipient capacity, health throttles, business window, jitter, partner diversity, and one-pending-task chaining.
+
+Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for classic SaaS-style Monday-Sunday Warmbly warmup. Prospect/cold campaigns remain separate and closed pending explicit approval.
