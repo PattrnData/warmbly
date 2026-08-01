@@ -1,16 +1,16 @@
 # Graph Report - warmbly-pattrn-push  (2026-08-01)
 
 ## Corpus Check
-- 2818 files · ~1,772,603 words
+- 2819 files · ~1,773,344 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 22125 nodes · 43187 edges · 1423 communities (1235 shown, 188 thin omitted)
+- 22140 nodes · 43201 edges · 1422 communities (1237 shown, 185 thin omitted)
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 2491 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6e29393b`
+- Built from commit: `4d7edae2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1161,7 +1161,6 @@
 - [[_COMMUNITY_Community 1419|Community 1419]]
 - [[_COMMUNITY_Community 1420|Community 1420]]
 - [[_COMMUNITY_Community 1421|Community 1421]]
-- [[_COMMUNITY_Community 1422|Community 1422]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `Request()` - 300 edges
@@ -1196,47 +1195,47 @@
 - 1-file cycle: `tracking/src/links.rs -> tracking/src/links.rs`
 - 1-file cycle: `tracking/src/producer.rs -> tracking/src/producer.rs`
 
-## Communities (1423 total, 188 thin omitted)
+## Communities (1422 total, 185 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.03
-Nodes (76): UNSAFE_REDIRECT_SCHEMES, APP_DELIVERY_STATUSES, AppDeliveryRow(), AppRow(), AppWebhookChip(), AppWebhookDeliveries(), AppWebhookInstalls(), AppWebhookSecretRow() (+68 more)
+Nodes (99): UNSAFE_REDIRECT_SCHEMES, APP_DELIVERY_STATUSES, AppDeliveryRow(), AppRow(), AppWebhookChip(), AppWebhookDeliveries(), AppWebhookInstalls(), AppWebhookSecretRow() (+91 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.04
-Nodes (72): AIUsageCard(), LimitCell(), meterTone(), RangeDays, REASON_LABELS, SpendForm, SpendStat(), WINDOW_PRESETS (+64 more)
+Cohesion: 0.03
+Nodes (74): AIUsageCard(), LimitCell(), meterTone(), RangeDays, REASON_LABELS, SpendForm, SpendStat(), WINDOW_PRESETS (+66 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.02
-Nodes (69): Order, changePassword(), LoginResult, Session, deleteCampaign(), startCampaign(), stopCampaign(), updateCampaign() (+61 more)
+Nodes (99): Pagination, changePassword(), LoginResult, Session, deleteCampaign(), TrackingDomainStatus, verifyCampaignTrackingDomain(), AuthRequestConfig (+91 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.03
-Nodes (80): AutomationFlow(), getCampaign(), CampaignsPage(), useCampaign(), useStartCampaign(), useStopCampaign(), CONTACT_SLIDE_TABS, ContactSlideTab (+72 more)
+Cohesion: 0.05
+Nodes (43): Deal, DealsResult, DealStatus, DealsSearchPagination, DealsSearchResult, DealsSummary, DealStageSummary, DealRow() (+35 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
-Nodes (50): Client, normalizeError(), authHeader(), ImportColumnMapping, ImportColumnTarget, importCommitContacts(), ImportCommitOptions, ImportDedupStrategy (+42 more)
+Nodes (52): Client, normalizeError(), authHeader(), ImportColumnMapping, ImportColumnTarget, importCommitContacts(), ImportCommitOptions, ImportDedupStrategy (+44 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.10
-Nodes (18): Bool, ClosedRange, EmailAccount, Field, Int, MailboxHealth, MailboxUpdateBody, UserGroup (+10 more)
+Nodes (17): ButtonStyle, TapScaleStyle, Configuration, Bool, ClosedRange, EmailAccount, Field, Int (+9 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.03
-Nodes (63): useDashboard(), useUsageOverview(), CSVSelector(), useCampaigns(), UseCampaignsProps, AnimatedHeight(), BROWSE_SORTS, CategoryRef (+55 more)
+Cohesion: 0.07
+Nodes (34): ActionEditor(), ConditionEditor(), ACTION_LABELS, actionNeedsChannel(), actionNeedsURL(), actionSupportsTemplate(), AI_ALLOWLIST_ACTIONS, AI_FIELD (+26 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.14
-Nodes (13): ContactColumnTarget, company, custom, email, firstName, ignore, lastName, phone (+5 more)
+Cohesion: 0.15
+Nodes (13): ContactAdvancedFilters, ContactFieldFilter, ContactFiltersSheet, MiniStepper, Binding, Bool, ClosedRange, ContactCategory (+5 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.03
-Nodes (96): AIDraftBar(), AIDraftController, GenerateResult, useAIDraft(), UseAIDraftOptions, AI_QUICK_ACTIONS, AIEditPhase, AIEditPopover() (+88 more)
+Cohesion: 0.02
+Nodes (184): AIDraftBar(), AIDraftController, GenerateResult, useAIDraft(), UseAIDraftOptions, AI_QUICK_ACTIONS, AIEditPhase, AIEditPopover() (+176 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.03
-Nodes (100): AutomationNode, CLOSE, PIPEDRIVE, RAW_BRAND_LOGOS, RawBrandLogo, SLACK, ConnectDrawer(), Drawer() (+92 more)
+Cohesion: 0.05
+Nodes (46): ConnectDrawer(), Drawer(), FieldDef, FIELDS_BY_PROVIDER, SectionLabel(), BookingLinkBlock(), ConnectionDetail(), FieldMappingsBlock() (+38 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.02
@@ -1244,15 +1243,15 @@ Nodes (122): CodingKeys, accountHealth, action, actionDate, actionRequired, acti
 
 ### Community 11 - "Community 11"
 Cohesion: 0.03
-Nodes (93): AdminPage(), twoFactorDisable(), twoFactorEnrollConfirm(), twoFactorEnrollStart, twoFactorStatus(), twoFactorVerify(), STATUS_KEY, useTwoFactorDisable() (+85 more)
+Nodes (74): completeOnboarding(), CompleteOnboardingData, updateProfile(), UpdateProfileData, CompleteOnboardingData, useCompleteOnboarding(), UpdateProfileData, useUpdateProfile() (+66 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.18
-Nodes (10): Passkey, useDeletePasskey(), usePasskeys(), useRenamePasskey(), passkeySupported(), EmailStep(), deletePasskey(), listPasskeys() (+2 more)
+Cohesion: 0.14
+Nodes (12): Passkey, useDeletePasskey(), usePasskeys(), useRenamePasskey(), PasskeyCancelled, passkeySupported(), platformPasskeyAvailable(), EmailStep() (+4 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.02
-Nodes (114): CampaignDeliverability, DeliverabilityBand, DeliverabilityDailyPoint, DeliverabilityDashboard, MailboxDeliverability, ProviderPlacement, WarmupDomainPlacement, DAYS (+106 more)
+Cohesion: 0.01
+Nodes (214): CampaignDeliverability, DeliverabilityBand, DeliverabilityDailyPoint, DeliverabilityDashboard, MailboxDeliverability, ProviderPlacement, WarmupDomainPlacement, getCampaignAnalytics() (+206 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.02
@@ -1271,12 +1270,12 @@ Cohesion: 0.05
 Nodes (51): AdminService, NewService(), BanScope, CreatePlanRequest, AdminAuditLogSearch, AdminAuditLogsResult, AdminBlockedAccountsResult, AdminCampaignDetail (+43 more)
 
 ### Community 18 - "Community 18"
-Cohesion: 0.03
-Nodes (55): ActionKV, AITagRef, SequenceAction, SequenceActionType, BRANCH_FIELD_LABELS, BranchCondition, BranchField, BranchOperator (+47 more)
+Cohesion: 0.02
+Nodes (146): Access, AdminLayout(), Permission, Role, getTimezones(), RootAppLayout(), Timezone, useTimezones() (+138 more)
 
 ### Community 19 - "Community 19"
 Cohesion: 0.06
-Nodes (46): IntegrationHealth, IntegrationOAuthState, Automation, AutomationNodePosition, AutomationNodeResult, AutomationRun, Context, IntegrationConnection (+38 more)
+Nodes (48): IntegrationHealth, IntegrationOAuthState, Automation, AutomationNodePosition, AutomationNodeResult, AutomationRun, Context, IntegrationConnection (+40 more)
 
 ### Community 20 - "Community 20"
 Cohesion: 0.05
@@ -1291,24 +1290,24 @@ Cohesion: 0.05
 Nodes (54): CreateDiscountCodeRequest, AuditLogger, DiscountService, fakeCodeRepo, fakePlanRepo, fakeRedRepo, service, applyMoneyDiscount() (+46 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.17
-Nodes (7): CampaignsOverview, Context, Sequence, Task, Time, UUID, CampaignRepository
+Cohesion: 0.06
+Nodes (57): DaysToMask(), DefaultDays(), ValidateDaysMask(), Campaign, CampaignSender, CampaignSenderInput, CampaignsOverview, CampaignsResult (+49 more)
 
 ### Community 24 - "Community 24"
-Cohesion: 0.05
-Nodes (46): AuthFlowView, CampaignStatsVisual, EnvelopeSpec, FeatureShowcase, FeatureTicker, Field, email, origin (+38 more)
+Cohesion: 0.04
+Nodes (62): AuthFlowView, CampaignStatsVisual, EnvelopeSpec, FeatureShowcase, FeatureTicker, HeroFlightScene, InboxPlacementVisual, Mode (+54 more)
 
 ### Community 25 - "Community 25"
 Cohesion: 0.09
-Nodes (53): ContactFieldFilterPayload, ContactFilterType, CustomFieldRow, Contact, ContactAdvancedFilters, ContactBulkEditBody, ContactBulkFieldPayload, ContactCampaignLead (+45 more)
+Nodes (52): ContactFieldFilterPayload, ContactFilterType, CustomFieldRow, Contact, ContactAdvancedFilters, ContactBulkEditBody, ContactBulkFieldPayload, ContactCampaignLead (+44 more)
 
 ### Community 26 - "Community 26"
 Cohesion: 0.07
 Nodes (63): listPlans(), listManagedWorkers(), CampaignsPage(), STATUS_OPTIONS, STATUS_TONE, FIELD_LABEL, FIELD_OPTIONS, LimitRequestsPage() (+55 more)
 
 ### Community 27 - "Community 27"
-Cohesion: 0.05
-Nodes (69): AccountHealthRow, AnalyticsAccountError, AnalyticsAccountHealth, AnalyticsAccountHealthCounts, AnalyticsAccountUsage, AnalyticsActivityItem, AnalyticsDataEnvelope, AnalyticsDateRange (+61 more)
+Cohesion: 0.06
+Nodes (74): AccountHealthRow, AnalyticsAccountError, AnalyticsAccountHealth, AnalyticsAccountHealthCounts, AnalyticsAccountUsage, AnalyticsActivityItem, AnalyticsDataEnvelope, AnalyticsDateRange (+66 more)
 
 ### Community 28 - "Community 28"
 Cohesion: 0.06
@@ -1323,16 +1322,16 @@ Cohesion: 0.04
 Nodes (61): searchCampaigns(), stopCampaign(), toQuery(), approveLimitRequest(), listLimitRequests(), rejectLimitRequest(), toQuery(), searchMailboxes() (+53 more)
 
 ### Community 31 - "Community 31"
-Cohesion: 0.06
-Nodes (34): Any, APIClient, Bool, Double, Int, PhoenixSocket, ConnectionState, connected (+26 more)
+Cohesion: 0.03
+Nodes (69): DashboardAnalytics, AnalyticsOverallStats, ContactColumnTarget, company, custom, email, firstName, ignore (+61 more)
 
 ### Community 32 - "Community 32"
 Cohesion: 0.02
 Nodes (82): CodingKeys, assignedTeamID, assignedTo, bodyHTML, bodyPlain, campaignID, campaignName, canceled (+74 more)
 
 ### Community 33 - "Community 33"
-Cohesion: 0.07
-Nodes (73): Context, Pool, UUID, Context, Pool, T, RunMigrations(), Context (+65 more)
+Cohesion: 0.41
+Nodes (19): Context, Pool, UUID, legacyUniboxEmail, joinWarmupPool(), main(), seedBaseline(), seedLegacyUnibox() (+11 more)
 
 ### Community 34 - "Community 34"
 Cohesion: 0.03
@@ -1340,15 +1339,15 @@ Nodes (80): CodingKeys, acceptedAt, accountLimit, authProvider, backupState, bod
 
 ### Community 35 - "Community 35"
 Cohesion: 0.07
-Nodes (23): Category, Folder, Tag, asArray(), getUser(), SendPreferencesResponse, updateSendPreferences(), User (+15 more)
+Nodes (22): Category, Folder, Order, Tag, SendPreferencesResponse, updateSendPreferences(), User, createCategory() (+14 more)
 
 ### Community 36 - "Community 36"
 Cohesion: 0.06
 Nodes (77): AdminPermission, AdminUserSummary, Duration, LimitIncreaseRequest, Organization, OrganizationCounts, OrganizationLimitOverrides, OrganizationLimits (+69 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.05
-Nodes (67): CampaignAnalyticsStep, CampaignAnalyticsSummary, CampaignLead, Campaign, CampaignActionError, creatorOnly, CampaignActionResponse, CampaignAnalytics (+59 more)
+Cohesion: 0.06
+Nodes (68): CampaignAnalyticsStep, CampaignAnalyticsSummary, CampaignLead, Campaign, CampaignActionError, creatorOnly, CampaignActionResponse, CampaignAnalytics (+60 more)
 
 ### Community 38 - "Community 38"
 Cohesion: 0.05
@@ -1359,8 +1358,8 @@ Cohesion: 0.05
 Nodes (49): contactDisplayName(), nextChainTarget(), renderContactTemplate(), ActionKV, service, Contact, Context, UUID (+41 more)
 
 ### Community 40 - "Community 40"
-Cohesion: 0.03
-Nodes (113): AgentPanel(), DashboardNotFound(), dests, BillingInterval, BillingSettingsPage(), BillingTab, describeDiscount(), describeRedemption() (+105 more)
+Cohesion: 0.01
+Nodes (190): AgentPanel(), useDashboard(), useUsageOverview(), APIKeysPage(), fmtFull(), fmtRelative(), KeyRow(), useAPIKeys() (+182 more)
 
 ### Community 41 - "Community 41"
 Cohesion: 0.12
@@ -1368,67 +1367,67 @@ Nodes (22): B, HTTPURLResponse, AsyncThrowingStream, AuthToken, Bool, Data, Erro
 
 ### Community 42 - "Community 42"
 Cohesion: 0.09
-Nodes (15): Handle(), Context, Handler, Context, Handler, Context, Handler, Context (+7 more)
+Nodes (13): Handle(), Context, Handler, Context, Handler, Context, Handler, Context (+5 more)
 
 ### Community 43 - "Community 43"
-Cohesion: 0.07
-Nodes (35): ContactColumnTarget, ContactCSV, ContactAddFlow, Field, company, email, first, last (+27 more)
+Cohesion: 0.06
+Nodes (36): ContactColumnTarget, ContactCSV, ContactAddFlow, Field, company, email, first, last (+28 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.08
-Nodes (65): Context, Pool, UUID, Context, Pool, UUID, Context, Pool (+57 more)
+Cohesion: 0.17
+Nodes (28): Config, Context, Encrypter, Pool, UUID, campaignSeed, contactSeed, mailboxProfile (+20 more)
 
 ### Community 45 - "Community 45"
 Cohesion: 0.09
 Nodes (35): CreateContactNote, CRMService, NewService(), toErrx(), ContactActivitiesResult, ContactNote, ContactNotesResult, Context (+27 more)
 
 ### Community 46 - "Community 46"
-Cohesion: 0.17
-Nodes (17): antContentBlock, antToolsFromDefs(), execToolShared(), transcriptToAnthropic(), antMessage, antRequest, antResponse, antTool (+9 more)
+Cohesion: 0.12
+Nodes (21): antContentBlock, antToolsFromDefs(), execToolShared(), newAnthropicProvider(), transcriptToAnthropic(), anthropicProvider, antMessage, antRequest (+13 more)
 
 ### Community 47 - "Community 47"
 Cohesion: 0.08
 Nodes (15): Context, Handler, Context, Handler, Context, Handler, Context, Handler (+7 more)
 
 ### Community 48 - "Community 48"
-Cohesion: 0.09
-Nodes (25): initialState, Purpose, purposeDefaults, WizardState, AdminUserSearchResult, convertWorkerToDedicated(), createWorker(), deleteWorker() (+17 more)
+Cohesion: 0.17
+Nodes (14): AdminUserSearchResult, deleteWorker(), getManagedWorker(), getWorkerLiveStatus(), getWorkerLogs(), listWorkerEmails(), reassignEmailsToWorker(), rebootWorker() (+6 more)
 
 ### Community 49 - "Community 49"
 Cohesion: 0.09
-Nodes (14): AdminOrgDetail, AdminOrgMember, Context, EnterpriseInquiry, LimitIncreaseRequest, Organization, OrganizationInvitation, OrganizationLimitOverrides (+6 more)
+Nodes (16): AdminOrgDetail, AdminOrgMember, Context, EnterpriseInquiry, LimitIncreaseRequest, Organization, OrganizationInvitation, OrganizationLimitOverrides (+8 more)
 
 ### Community 50 - "Community 50"
 Cohesion: 0.09
 Nodes (15): Context, Pool, Time, UUID, WarmupHealthState, WarmupParticipantHealth, NewWarmupRepository(), SpamReport (+7 more)
 
 ### Community 51 - "Community 51"
-Cohesion: 0.05
-Nodes (61): CaseIterable, Page, details, method, organize, Bool, Contact, Date (+53 more)
+Cohesion: 0.06
+Nodes (56): Bool, Contact, Date, DateFormatter, Int, String, AIDraftReplyRequest, AIEditRequest (+48 more)
 
 ### Community 52 - "Community 52"
-Cohesion: 0.05
-Nodes (45): CampaignLeadsStore, CampaignLeadsSidebar, EmptyStateView, ErrorStateView, EyebrowLabel, PingEffect, PresenceAvatars, PresenceResourceModifier (+37 more)
+Cohesion: 0.04
+Nodes (53): AnalyticsSidebar, AnalyticsScope, AnalyticsStore, CampaignLeadsStore, CampaignLeadsSidebar, EmptyStateView, ErrorStateView, EyebrowLabel (+45 more)
 
 ### Community 53 - "Community 53"
 Cohesion: 0.06
 Nodes (41): Props, APIError, AuthRequestConfig, ensureValidToken(), http, refreshTokens(), Request(), getMe() (+33 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.07
-Nodes (37): RootLayout(), DangerSettingsPage(), formatAbsolute(), formatRemaining(), PendingDeletionBanner(), Props, ScheduleDeletionModal(), cancelAccountDeletion() (+29 more)
+Cohesion: 0.24
+Nodes (11): DangerSettingsPage(), ScheduleDeletionModal(), getOrganizationDangerZone(), useAccountDangerZone(), useCancelAccountDeletion(), useCancelOrganizationDeletion(), useOrganizationDangerZone(), useScheduleAccountDeletion() (+3 more)
 
 ### Community 56 - "Community 56"
-Cohesion: 0.12
-Nodes (38): Codable, Bool, Date, Decoder, Double, Int, Int64, String (+30 more)
+Cohesion: 0.29
+Nodes (7): APIError, decoding, network, notConfigured, rateLimited, server, unauthorized
 
 ### Community 57 - "Community 57"
-Cohesion: 0.09
-Nodes (22): Error, AnyTransition, Binding, Bool, CGFloat, EmailAccount, String, SubmitLabel (+14 more)
+Cohesion: 0.06
+Nodes (38): Error, Int, AnyTransition, Binding, Bool, CGFloat, EmailAccount, String (+30 more)
 
 ### Community 58 - "Community 58"
-Cohesion: 0.05
-Nodes (36): Pagination, MailboxPickerProps, AddContact, BulkEditContacts, BulkEditContactsField, Contact, ContactCampaignProgress, LeadStatus (+28 more)
+Cohesion: 0.30
+Nodes (20): Context, Pool, UUID, funnelState, agencyContactID(), classify(), dayExpr(), insertProgress() (+12 more)
 
 ### Community 59 - "Community 59"
 Cohesion: 0.06
@@ -1451,8 +1450,8 @@ Cohesion: 0.08
 Nodes (28): AppBadges, APIClient, Bool, CGFloat, Date, Int, ScheduledSend, Set (+20 more)
 
 ### Community 64 - "Community 64"
-Cohesion: 0.05
-Nodes (31): buildComposePrompt(), emptyIfNil(), composeDraftUpsertRequest, currentSessionID(), Context, Handler, Context, Handler (+23 more)
+Cohesion: 0.04
+Nodes (37): Candidate, buildComposePrompt(), emptyIfNil(), composeCandidateResponse, composeDraftUpsertRequest, currentSessionID(), bareAddress(), toComposeCandidateResponse() (+29 more)
 
 ### Community 65 - "Community 65"
 Cohesion: 0.07
@@ -1463,16 +1462,16 @@ Cohesion: 0.06
 Nodes (32): registrationEmailAllowed(), Nonce(), RID(), TestNonce(), VerificationCode(), authService, AuthData, AuthSession (+24 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.15
-Nodes (17): Context, UUID, WebhookDeliveryFilter, WebhookEndpoint, WebhookEventDrop, WebhookEventType, EncodeOffset(), DispatchSink (+9 more)
+Cohesion: 0.10
+Nodes (31): Cache, Client, Context, Duration, Response, UUID, WebhookDelivery, WebhookDeliveryFilter (+23 more)
 
 ### Community 68 - "Community 68"
 Cohesion: 0.03
 Nodes (59): CodingKeys, accountEmail, accountID, accountName, awaitingReply, bcc, bodyHTML, bodyPlain (+51 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.03
-Nodes (96): getContactDeals(), useContactDeals(), AssigneeTeamPicker(), AssigneeValue, CRMTask, CRMTaskPriority, CRMTasksResult, CRMTaskStatus (+88 more)
+Cohesion: 0.02
+Nodes (112): getContactDeals(), lookupContact(), useContactByEmail(), useContactDeals(), AssigneeTeamPicker(), CRMTask, CRMTaskPriority, CRMTasksResult (+104 more)
 
 ### Community 70 - "Community 70"
 Cohesion: 0.06
@@ -1480,7 +1479,7 @@ Nodes (47): archiveWarmupConversation(), cancelWarmupBatch(), deleteWarmupConver
 
 ### Community 71 - "Community 71"
 Cohesion: 0.06
-Nodes (34): AdminAuditLog, AdminBlockedAccountsResult, AdminCampaignDetail, AdminEnterpriseInquiry, AdminsResult, AdminUpdateWorker, AdminUserDetail, AdminUserPreview (+26 more)
+Nodes (30): AdminAuditLog, AdminBlockedAccountsResult, AdminCampaignDetail, AdminEnterpriseInquiry, AdminsResult, AdminUpdateWorker, AdminUserDetail, AdminUserPreview (+22 more)
 
 ### Community 72 - "Community 72"
 Cohesion: 0.03
@@ -1499,20 +1498,20 @@ Cohesion: 0.09
 Nodes (30): Alignment, BlockDrag, BlockDrag, CampaignScheduleBoard, CampaignSchedulePage, clampF(), clampInt(), fmt() (+22 more)
 
 ### Community 76 - "Community 76"
-Cohesion: 0.07
-Nodes (23): useLogin(), useLoginConfirm(), useRegister(), useRegisterConfirm(), useTwoFactorVerify(), useLoginForm(), empty, StrengthResult (+15 more)
+Cohesion: 0.09
+Nodes (17): useLogin(), useLoginConfirm(), useRegister(), useRegisterConfirm(), useTwoFactorVerify(), useLoginForm(), emailSchema, LoginPage() (+9 more)
 
 ### Community 77 - "Community 77"
 Cohesion: 0.02
-Nodes (115): EmailEditorProps, Entry, EXAMPLES, ExpressionReference(), Section, SECTIONS, MiniCampaign, useCreateCategory() (+107 more)
+Nodes (92): createCampaign(), CreateCampaignInput, initialSequence(), NewCampaignDialog(), Props, ScheduleStep(), SequenceDraft, Step (+84 more)
 
 ### Community 78 - "Community 78"
 Cohesion: 0.09
 Nodes (28): Context, Duration, EmailNotificationService, Pool, SubscriptionRepository, Context, DedicatedWorkerAssignment, Pool (+20 more)
 
 ### Community 79 - "Community 79"
-Cohesion: 0.07
-Nodes (37): getenvDefault(), localTasksPollInterval(), main(), wsHealthURL(), Duration, AWSNeeded(), BillingProvider(), BlobProvider() (+29 more)
+Cohesion: 0.08
+Nodes (31): getenvDefault(), localTasksPollInterval(), main(), wsHealthURL(), Duration, AWSNeeded(), BillingProvider(), BlobProvider() (+23 more)
 
 ### Community 80 - "Community 80"
 Cohesion: 0.07
@@ -1523,8 +1522,8 @@ Cohesion: 0.08
 Nodes (27): JobsService, Context, WarmupGenerationSettings, Time, UUID, Context, Pool, Row (+19 more)
 
 ### Community 82 - "Community 82"
-Cohesion: 0.03
-Nodes (65): ACTION_VISUAL, ActionEditor(), actionGlyph(), AddStepMenu(), AI_POOL_KEY, AI_STEP_MODE_OPTIONS, AITagPoolField(), ConditionEditor() (+57 more)
+Cohesion: 0.04
+Nodes (20): ACTION_VISUAL, AI_POOL_KEY, AI_STEP_MODE_OPTIONS, AITagPoolField(), ConvergeEdge(), edgeTypes, getNaturalPath(), handleDir() (+12 more)
 
 ### Community 83 - "Community 83"
 Cohesion: 0.09
@@ -1535,8 +1534,8 @@ Cohesion: 0.07
 Nodes (32): CRMDealsStore, CRMMeetingScope, past, today, upcoming, CRMMeetingsStore, CRMTaskScope, completed (+24 more)
 
 ### Community 85 - "Community 85"
-Cohesion: 0.11
-Nodes (25): EmailAuthTarget, InternalError(), Context, Handler, Context, DB, Email, EmailsResult (+17 more)
+Cohesion: 0.12
+Nodes (23): EmailAuthTarget, InternalError(), Context, DB, Email, EmailsResult, Encrypter, Error (+15 more)
 
 ### Community 86 - "Community 86"
 Cohesion: 0.12
@@ -1547,8 +1546,8 @@ Cohesion: 0.11
 Nodes (24): Context, DB, RawMessage, Row, Time, UUID, ProvisioningJobState, CloudCredential (+16 more)
 
 ### Community 88 - "Community 88"
-Cohesion: 0.06
-Nodes (34): CampaignAnalytics, CampaignSummary, DateRange, SequenceStats, CampaignComparison, CampaignComparisonItem, compareCampaigns(), DailyStats (+26 more)
+Cohesion: 0.26
+Nodes (8): DashboardOverview, getWarmup(), UsageOverview, WarmupAnalytics, WarmupDailyStat, WarmupSummary, AnalyticsSlice, createAnalyticsSlice()
 
 ### Community 89 - "Community 89"
 Cohesion: 0.04
@@ -1556,7 +1555,7 @@ Nodes (51): Cancel a limit request, Cancel an invitation, Cancel organization de
 
 ### Community 90 - "Community 90"
 Cohesion: 0.09
-Nodes (44): Encoder, Identifiable, Bool, CGFloat, Color, Date, Decoder, Double (+36 more)
+Nodes (43): Encoder, Bool, CGFloat, Color, Date, Decoder, Double, Int (+35 more)
 
 ### Community 91 - "Community 91"
 Cohesion: 0.07
@@ -1564,7 +1563,7 @@ Nodes (36): firewallRef, apiLocation, apiPrice, apiPrimaryIP, apiServer, apiServ
 
 ### Community 92 - "Community 92"
 Cohesion: 0.05
-Nodes (43): AccountDailyUsage, AccountError, AccountHealth, AccountStatus, WarmupHealthInfo, WarmupStatusInfo, getAccountStatus(), getAccountStatuses() (+35 more)
+Nodes (34): AccountDailyUsage, AccountError, AccountHealth, AccountStatus, WarmupHealthInfo, WarmupStatusInfo, getAccountStatus(), getAccountStatuses() (+26 more)
 
 ### Community 93 - "Community 93"
 Cohesion: 0.19
@@ -1579,12 +1578,12 @@ Cohesion: 0.11
 Nodes (23): CheckoutSession, Context, Customer, DiscountCode, DiscountService, Error, Event, Plan (+15 more)
 
 ### Community 96 - "Community 96"
-Cohesion: 0.08
-Nodes (33): GoogleOauth2Auth(), getEnvOrDefault(), Load(), NewConfig(), GoogleOauth2Inbox(), OutlookAppOnlyInbox(), OutlookOauth2Inbox(), TestOutlookAppOnlyInboxFallsBackToMicrosoftTenantID() (+25 more)
+Cohesion: 0.07
+Nodes (34): GoogleOauth2Auth(), getEnvOrDefault(), Load(), NewConfig(), GoogleOauth2Inbox(), OutlookAppOnlyInbox(), OutlookOauth2Inbox(), TestOutlookAppOnlyInboxFallsBackToMicrosoftTenantID() (+26 more)
 
 ### Community 97 - "Community 97"
 Cohesion: 0.09
-Nodes (45): Equatable, Bool, Date, DateFormatter, Double, Int, Int64, MailboxHealth (+37 more)
+Nodes (44): Bool, Date, DateFormatter, Double, Int, Int64, MailboxHealth, String (+36 more)
 
 ### Community 98 - "Community 98"
 Cohesion: 0.04
@@ -1663,16 +1662,16 @@ Cohesion: 0.06
 Nodes (15): useIsMobile(), Sheet(), SheetContent(), SheetDescription(), SheetHeader(), SheetTitle(), Sidebar(), SidebarContext (+7 more)
 
 ### Community 117 - "Community 117"
-Cohesion: 0.04
-Nodes (38): createAPIKey(), CreateAPIKeyInput, getAPIKey(), AnalyticsParams, getAPIKeyAnalytics(), getAPIKeyUsageSummary(), listAPIKeys(), listAPIKeyUsageLogs() (+30 more)
+Cohesion: 0.15
+Nodes (6): revokeAPIKey(), useAPIKeyUsageLogs(), useRevokeAPIKey(), useUpdateAPIKey(), fmtRelative(), Inner()
 
 ### Community 118 - "Community 118"
-Cohesion: 0.13
-Nodes (16): ABVariantStats, DeliverabilityEvent, AdvancedOutreachSettings, CampaignABVariant, Context, CreateCampaignABVariantRequest, PreflightReport, Row (+8 more)
+Cohesion: 0.16
+Nodes (11): ABVariantStats, DeliverabilityEvent, AdvancedOutreachSettings, Context, PreflightReport, TaskDeadLetter, UUID, ReplyIntentRecord (+3 more)
 
 ### Community 119 - "Community 119"
-Cohesion: 0.15
-Nodes (16): ABWinnerAnalysis, toErrx(), IngestDeliverabilityEventRequest, AdvancedOutreachSettings, CampaignAdvancedSettings, Contact, Context, CreateCampaignABVariantRequest (+8 more)
+Cohesion: 0.14
+Nodes (15): ABWinnerAnalysis, toErrx(), IngestDeliverabilityEventRequest, CampaignAdvancedSettings, Contact, Context, CreateCampaignABVariantRequest, CreateDeal (+7 more)
 
 ### Community 120 - "Community 120"
 Cohesion: 0.05
@@ -1687,8 +1686,8 @@ Cohesion: 0.06
 Nodes (25): searchAdminAuditLogs(), queryClient, router, getSystemStatus(), SystemComponentStatus, SystemStatusResult, AnalyticsPage(), ACTION_TONE (+17 more)
 
 ### Community 123 - "Community 123"
-Cohesion: 0.09
-Nodes (27): replySubject(), decodeBase64URL(), extractBody(), getAddressList(), getSingleHeader(), GmailMessageToEmailData(), parseGmailDate(), gh() (+19 more)
+Cohesion: 0.11
+Nodes (24): replySubject(), decodeBase64URL(), extractBody(), getAddressList(), getSingleHeader(), GmailMessageToEmailData(), parseGmailDate(), gh() (+16 more)
 
 ### Community 124 - "Community 124"
 Cohesion: 0.05
@@ -1712,7 +1711,7 @@ Nodes (44): AppTab, AirCardModifier, AirDetailScaffold, AirSectionHeader, AirSky
 
 ### Community 129 - "Community 129"
 Cohesion: 0.06
-Nodes (32): AnalyticsChartPoint, AnalyticsMiniStat, AnalyticsRootView, AnalyticsScope, accounts, deliverability, overview, warmup (+24 more)
+Nodes (37): AnalyticsPeriod, month, quarter, week, AnalyticsChartPoint, AnalyticsMiniStat, AnalyticsRootView, AnalyticsScope (+29 more)
 
 ### Community 130 - "Community 130"
 Cohesion: 0.11
@@ -1727,8 +1726,8 @@ Cohesion: 0.05
 Nodes (36): Check domain authentication, Connect a mailbox (onboarding), Connect SMTP/IMAP, Delete a mailbox, Finish OAuth, Get a mailbox, Get warmup ban status, List mailboxes (+28 more)
 
 ### Community 133 - "Community 133"
-Cohesion: 0.04
-Nodes (63): AdminLayout(), RootAppLayout(), CampaignFolderField(), WorkerHealthAlert(), ChannelEventHandler, ChannelInfo, ChannelMessage, ChannelState (+55 more)
+Cohesion: 0.19
+Nodes (14): twoFactorDisable(), twoFactorEnrollConfirm(), twoFactorEnrollStart, twoFactorStatus(), twoFactorVerify(), STATUS_KEY, useTwoFactorDisable(), useTwoFactorEnrollConfirm() (+6 more)
 
 ### Community 134 - "Community 134"
 Cohesion: 0.16
@@ -1755,8 +1754,8 @@ Cohesion: 0.05
 Nodes (36): Check domain authentication, Connect a mailbox (onboarding), Connect SMTP/IMAP, Delete a mailbox, Finish OAuth, Get a mailbox, Get warmup ban status, List mailboxes (+28 more)
 
 ### Community 140 - "Community 140"
-Cohesion: 0.08
-Nodes (24): arrProp(), boolProp(), enumProp(), intProp(), objectSchema(), objProp(), Deps, Context (+16 more)
+Cohesion: 0.10
+Nodes (20): arrProp(), boolProp(), enumProp(), intProp(), objectSchema(), objProp(), Registry, Registry (+12 more)
 
 ### Community 141 - "Community 141"
 Cohesion: 0.08
@@ -1767,8 +1766,8 @@ Cohesion: 0.11
 Nodes (24): CampaignDailyStat, CampaignDailyChartRow, CampaignOverviewStore, CampaignSenderRow, CampaignSendersPageView, CampaignSendersStore, CampaignSequencePage, CampaignStepReader (+16 more)
 
 ### Community 143 - "Community 143"
-Cohesion: 0.11
-Nodes (18): AutomationWrite, BuildInboundAutomationURL(), decorateAutomation(), generateAutomationInboundToken(), generateSigningSecret(), isInboundTrigger(), parseInboundPayload(), IntegrationOAuthStartResponse (+10 more)
+Cohesion: 0.12
+Nodes (13): ConnectionSecrets, generateSigningSecret(), IntegrationOAuthStartResponse, AutomationNodePosition, Context, IntegrationAction, IntegrationConnection, IntegrationEventSubscription (+5 more)
 
 ### Community 144 - "Community 144"
 Cohesion: 0.13
@@ -1779,16 +1778,16 @@ Cohesion: 0.10
 Nodes (30): DedupeCache, IntoResponse, LinkResolver, RateLimiter, is_prefetch(), is_scanner(), RateLimiter, AppState (+22 more)
 
 ### Community 146 - "Community 146"
-Cohesion: 0.08
-Nodes (26): EmailMessageStoreDataPreview, buildReplyPrompt(), isCapExceeded(), isInsufficientCredits(), mapCreditError(), clampPreviewContext(), previewSearchQuery(), searchIdem() (+18 more)
+Cohesion: 0.07
+Nodes (29): EmailMessageStoreDataPreview, buildReplyPrompt(), isCapExceeded(), isInsufficientCredits(), mapCreditError(), sampleContact(), clampPreviewContext(), previewSearchQuery() (+21 more)
 
 ### Community 147 - "Community 147"
-Cohesion: 0.22
-Nodes (21): CreateCampaign, UpdateCampaign, Error, ScheduleWindows, Time, Valid(), CampaignDailyLimit(), CampaignDays() (+13 more)
+Cohesion: 0.29
+Nodes (18): Context, Pool, UUID, devContactEmail(), devContactID(), devEntityID(), seedDevCampaigns(), seedDevContacts() (+10 more)
 
 ### Community 148 - "Community 148"
 Cohesion: 0.11
-Nodes (33): Time, UUID, ABTestingSettings, ABVariantStats, ABWinnerAnalysis, DefaultAdvancedOutreachSettings(), AdvancedOutreachSettings, BouncePipelineSettings (+25 more)
+Nodes (32): Time, UUID, ABTestingSettings, ABVariantStats, ABWinnerAnalysis, AdvancedOutreachSettings, BouncePipelineSettings, CampaignABVariant (+24 more)
 
 ### Community 149 - "Community 149"
 Cohesion: 0.12
@@ -1811,8 +1810,8 @@ Cohesion: 0.08
 Nodes (20): banUser(), getUserBans(), getUserPreview(), searchUsers(), toQuery(), unbanUser(), updateUserRateLimits(), UserBanDialog() (+12 more)
 
 ### Community 154 - "Community 154"
-Cohesion: 0.12
-Nodes (22): breachLabel(), mergeMap(), mergeSettings(), NewService(), AdvancedOutreachRepository, AutomationRunner, EventDispatcher, InboxAgent (+14 more)
+Cohesion: 0.10
+Nodes (29): buildReplyHeaders(), classifyReply(), cleanMessageID(), containsAnyKeyword(), NewService(), parseSenderEmail(), ptrTime(), AdvancedOutreachRepository (+21 more)
 
 ### Community 155 - "Community 155"
 Cohesion: 0.09
@@ -1851,12 +1850,12 @@ Cohesion: 0.06
 Nodes (32): NewRegistry(), SkillLookup, SuppressionChecker, BuildRegistry(), decodeArgs(), Deps, AnalyticsService, APIKeyService (+24 more)
 
 ### Community 164 - "Community 164"
-Cohesion: 0.04
-Nodes (67): AssistantHistoryView, AssistantView, AssistantChatStore, AttributedString, OTPCodeField, ButtonStyle, ComposeDraftsView, ContactAdvancedFilters (+59 more)
+Cohesion: 0.12
+Nodes (19): ContactDealRow, ContactDealsSection, ContactEmailRow, ContactEmailsSection, ContactNoteRow, ContactNotesSection, ContactTimelineRow, ContactTimelineSection (+11 more)
 
 ### Community 165 - "Community 165"
 Cohesion: 0.10
-Nodes (21): ContactDetailStore, ContactDetailTab, deals, emails, notes, timeline, ContactDetailView, APIClient (+13 more)
+Nodes (22): ContactDetailStore, ContactDetailTab, deals, emails, notes, timeline, ContactDetailView, ContactNoteBody (+14 more)
 
 ### Community 166 - "Community 166"
 Cohesion: 0.23
@@ -1867,20 +1866,20 @@ Cohesion: 0.12
 Nodes (25): ContactResearchRun, ContactService, Context, CreditService, Error, Invocation, OrganizationService, Provider (+17 more)
 
 ### Community 168 - "Community 168"
-Cohesion: 0.17
-Nodes (25): Context, CreateReplyTemplate, ReplyTemplate, T, UpdateReplyTemplate, UUID, fakeRepo, RenderString() (+17 more)
+Cohesion: 0.19
+Nodes (24): Context, CreateReplyTemplate, ReplyTemplate, T, UpdateReplyTemplate, UUID, fakeRepo, RenderString() (+16 more)
 
 ### Community 169 - "Community 169"
 Cohesion: 0.12
 Nodes (20): Time, UUID, Context, Duration, Notification, NotificationPreferences, Pool, Time (+12 more)
 
 ### Community 170 - "Community 170"
-Cohesion: 0.17
+Cohesion: 0.18
 Nodes (16): Any, Bool, Data, Double, Never, Set, String, Task (+8 more)
 
 ### Community 171 - "Community 171"
-Cohesion: 0.12
-Nodes (47): ComposeAIDraftRequest, ComposeAIDraftResponse, ComposeCandidate, ComposeCandidatesResponse, ComposeDraft, ComposeDraftPayload, ComposeDraftsPage, ComposeGrounding (+39 more)
+Cohesion: 0.16
+Nodes (31): CRMDeal, CRMDealContact, CRMDealSearchBody, CRMDealsSummary, CRMDealsSummaryStage, CRMDealUpdateBody, CRMDeletedResponse, CRMMeeting (+23 more)
 
 ### Community 172 - "Community 172"
 Cohesion: 0.06
@@ -1903,8 +1902,8 @@ Cohesion: 0.09
 Nodes (25): badgeTone(), EventRow(), EventsPage(), FAMILY_CHIPS, FAMILY_MATCHERS, FamilyId, fmtTime(), ID_FIELDS (+17 more)
 
 ### Community 177 - "Community 177"
-Cohesion: 0.13
-Nodes (20): automationInUseMessage(), buildDisplayFields(), BuildInboundURL(), catalogAuthMethod(), generateInboundSecret(), hasAnyCredential(), isAutomationProvider(), NewService() (+12 more)
+Cohesion: 0.12
+Nodes (21): automationInUseMessage(), buildDisplayFields(), BuildInboundURL(), catalogAuthMethod(), generateInboundSecret(), hasAnyCredential(), isAutomationProvider(), NewService() (+13 more)
 
 ### Community 178 - "Community 178"
 Cohesion: 0.16
@@ -1955,12 +1954,12 @@ Cohesion: 0.08
 Nodes (20): AdminAuditLogSearch, AdminAuditLogsResult, AdminCampaignSearch, AdminCampaignsResult, AdminEnterpriseInquiriesResult, AdminEnterpriseInquirySearch, AdminMailboxesResult, AdminMailboxSearch (+12 more)
 
 ### Community 190 - "Community 190"
-Cohesion: 0.06
-Nodes (34): ComposeHistoryPanel(), ComposeHistoryPanelProps, HistoryTab, AnimatedNumber(), SearchInput(), Bucket, BUCKET_LABELS, ConversationList() (+26 more)
+Cohesion: 0.16
+Nodes (11): AnalyticsParams, getAPIKeyAnalytics(), getAPIKeyUsageSummary(), listAPIKeyUsageLogs(), useAPIKeyAnalytics(), APIKeyAnalytics, APIKeyEndpointStat, APIKeyUsageBucket (+3 more)
 
 ### Community 191 - "Community 191"
-Cohesion: 0.13
-Nodes (39): aiActionConfig, actionSuccessEdges(), agentOutputKey(), aiEventContext(), aiNodeHasBranch(), aiNodeRoutesByLabel(), aiOutputKeys(), aiTemperature() (+31 more)
+Cohesion: 0.08
+Nodes (58): aiActionConfig, Deterministic(), actionSuccessEdges(), agentOutputKey(), aiEventContext(), aiNodeHasBranch(), aiNodeRoutesByLabel(), aiOutputKeys() (+50 more)
 
 ### Community 192 - "Community 192"
 Cohesion: 0.11
@@ -1992,7 +1991,7 @@ Nodes (19): Any, APIClient, Bool, Data, Error, Int, String, Void (+11 more)
 
 ### Community 199 - "Community 199"
 Cohesion: 0.04
-Nodes (57): Campaign, CampaignSender, CampaignSenderInput, ScheduleInterval, createCampaign(), CreateCampaignInput, getCampaignSenders(), initialSequence() (+49 more)
+Nodes (58): Campaign, CampaignSender, CampaignSenderInput, ScheduleInterval, getCampaign(), getCampaignSenders(), bitCount(), LaunchCampaignDialog() (+50 more)
 
 ### Community 200 - "Community 200"
 Cohesion: 0.11
@@ -2004,19 +2003,19 @@ Nodes (30): Authentication, Begin passkey login, Confirm login, Confirm password
 
 ### Community 202 - "Community 202"
 Cohesion: 0.10
-Nodes (32): AutomationConfig, automationEventPayload, DispatchTarget, FieldMapEntry, FieldTransform, newDeliveryID(), buildAutomationPayload(), configString() (+24 more)
+Nodes (36): automationEventPayload, DispatchTarget, automationDeliver(), closeJSON(), closeUpsertLead(), discordEmbedPayload(), discordNotify(), hubspotJSON() (+28 more)
 
 ### Community 203 - "Community 203"
 Cohesion: 0.18
 Nodes (14): modelOrgID(), Campaign, campaignService, CampaignLogsResult, CampaignSender, CampaignSenderInput, CampaignsOverview, CampaignsResult (+6 more)
 
 ### Community 204 - "Community 204"
-Cohesion: 0.11
-Nodes (21): contactInfo, hostedMailbox, Client, Config, Context, Pool, Regexp, RWMutex (+13 more)
+Cohesion: 0.13
+Nodes (20): contactInfo, hostedMailbox, Client, Config, Context, Pool, Regexp, RWMutex (+12 more)
 
 ### Community 205 - "Community 205"
-Cohesion: 0.07
-Nodes (32): Access, Permission, Role, getTimezones(), Timezone, useTimezones(), logout(), UserC (+24 more)
+Cohesion: 0.18
+Nodes (9): AssistantHistoryView, AssistantView, AssistantChatStore, AttributedString, AgentPendingTool, AgentSession, Bool, String (+1 more)
 
 ### Community 206 - "Community 206"
 Cohesion: 0.06
@@ -2055,12 +2054,12 @@ Cohesion: 0.15
 Nodes (21): DryRunRequest, DryRunResponse, aiActionLabel(), actionPreview(), actionRunOutput(), chanceHit(), conditionSummary(), evaluateAutomationCondition() (+13 more)
 
 ### Community 215 - "Community 215"
-Cohesion: 0.17
-Nodes (19): extAccount, extAccount, identifyFunc, identifyGoogle(), identifyHubSpot(), identifyPipedrive(), identifySalesforce(), identifySlack() (+11 more)
+Cohesion: 0.16
+Nodes (20): extAccount, extAccount, identifyFunc, identifyGoogle(), identifyHubSpot(), identifyPipedrive(), identifySalesforce(), identifySlack() (+12 more)
 
 ### Community 216 - "Community 216"
-Cohesion: 0.14
-Nodes (21): Duration, NotificationCategory, Client, Context, DeviceTokenRepository, Error, Notification, Service (+13 more)
+Cohesion: 0.16
+Nodes (18): Client, Context, DeviceTokenRepository, Error, Notification, Service, NotificationCategory, NotificationPreferences (+10 more)
 
 ### Community 217 - "Community 217"
 Cohesion: 0.11
@@ -2083,11 +2082,11 @@ Cohesion: 0.18
 Nodes (15): getEmailVerificationKey(), getLoginSessionKey(), getPasswordResetLimitKey(), getRegistrationSessionKey(), getResetPasswordSessionKey(), SHA256(), TestSHA256(), authService (+7 more)
 
 ### Community 222 - "Community 222"
-Cohesion: 0.07
-Nodes (26): completeOnboarding(), CompleteOnboardingData, CompleteOnboardingData, useCompleteOnboarding(), FIELD_OPTIONS, STATUS_TONE, OnboardingForm, REFERRALS (+18 more)
+Cohesion: 0.14
+Nodes (14): AIStepConfig, AIStepMode, AISwitchConfig, AITagRef, AutomationCondition, AutomationEdge, AutomationGraph, AutomationNode (+6 more)
 
 ### Community 223 - "Community 223"
-Cohesion: 0.15
+Cohesion: 0.16
 Nodes (7): AuthorizeRequest, authorizeRequestFrom(), clientCredentials(), publicAPIBaseURL(), respondOAuthError(), Context, Handler
 
 ### Community 224 - "Community 224"
@@ -2107,16 +2106,16 @@ Cohesion: 0.18
 Nodes (11): Context, workerRepository, Row, Time, UUID, Worker, WorkerInstallState, WorkerType (+3 more)
 
 ### Community 228 - "Community 228"
-Cohesion: 0.09
-Nodes (23): AIStepConfig, AIStepMode, AISwitchConfig, AITagRef, Automation, AutomationCondition, AutomationEdge, AutomationNodeResult (+15 more)
+Cohesion: 0.18
+Nodes (11): Automation, AutomationWrite, DryRunResponse, createAutomation(), deleteAutomation(), testAutomation(), updateAutomation(), NodePosition (+3 more)
 
 ### Community 229 - "Community 229"
 Cohesion: 0.15
 Nodes (15): AuditDaySection, AuditDetailRow, AuditEntityChip, AuditEntryDetailView, AuditFmt, AuditLogStore, AuditLogView, AuditRowView (+7 more)
 
 ### Community 230 - "Community 230"
-Cohesion: 0.03
-Nodes (57): AddBoxTopBack(), AddContact, AddContacts(), ColumnMapping, CustomField, DEFAULT_CONTACT, main_fields, ManualContact (+49 more)
+Cohesion: 0.02
+Nodes (104): AddBoxTopBack(), AddContact, AddContacts(), ColumnMapping, CSVSelector(), CustomField, DEFAULT_CONTACT, main_fields (+96 more)
 
 ### Community 231 - "Community 231"
 Cohesion: 0.13
@@ -2148,11 +2147,11 @@ Nodes (25): RawMessage, Time, UUID, AnalyticsEventPayload, CampaignLogPayload, C
 
 ### Community 238 - "Community 238"
 Cohesion: 0.17
-Nodes (23): Context, schedulerService, Time, UUID, Email, Location, Task, Time (+15 more)
+Nodes (22): Context, schedulerService, Time, UUID, Email, Location, Task, Time (+14 more)
 
 ### Community 239 - "Community 239"
-Cohesion: 0.13
-Nodes (29): caseRegex(), MatchValueToCases(), normalizeSwitchText(), ResolvePipelineStage(), ResolveTag(), TagEnum(), AITagRef, MiniCategory (+21 more)
+Cohesion: 0.14
+Nodes (28): caseRegex(), MatchValueToCases(), normalizeSwitchText(), ResolvePipelineStage(), ResolveTag(), TagEnum(), AITagRef, MiniCategory (+20 more)
 
 ### Community 240 - "Community 240"
 Cohesion: 0.08
@@ -2171,8 +2170,8 @@ Cohesion: 0.08
 Nodes (24): AllValuesOf, CollectionEntry, CollectionKey, ContentConfig, DataEntryMap, ExtractCollectionFilterType, ExtractDataType, ExtractEntryFilterType (+16 more)
 
 ### Community 244 - "Community 244"
-Cohesion: 0.17
-Nodes (10): Candidate, composeCandidateResponse, bareAddress(), toComposeCandidateResponse(), UniboxComposeRequest, Context, Handler, Time (+2 more)
+Cohesion: 0.19
+Nodes (9): getAPIKey(), listAPIKeys(), APIKey, APIKeysResult, APIKeyStatus, APIKeyWithSecret, APIPermission, APIKeysSlice (+1 more)
 
 ### Community 245 - "Community 245"
 Cohesion: 0.13
@@ -2183,8 +2182,8 @@ Cohesion: 0.13
 Nodes (14): ContactCreateSheet, ContactEditSheet, PresenceEditingModifier, View, CustomFieldRow, Bool, Contact, ContactCategoryStore (+6 more)
 
 ### Community 247 - "Community 247"
-Cohesion: 0.14
-Nodes (14): RecipientField, RecipientFlow, Binding, Bool, CGFloat, CGRect, CGSize, Contact (+6 more)
+Cohesion: 0.15
+Nodes (13): RecipientField, RecipientFlow, Binding, Bool, CGFloat, CGRect, CGSize, Contact (+5 more)
 
 ### Community 248 - "Community 248"
 Cohesion: 0.14
@@ -2203,12 +2202,12 @@ Cohesion: 0.17
 Nodes (8): leadSyncConnectionResponse, leadSyncConnectionSummary, leadSyncPreviewPayload, leadSyncSpreadsheetPayload, Context, Handler, UUID, leadSyncConnectionSummary
 
 ### Community 252 - "Community 252"
-Cohesion: 0.19
-Nodes (15): Context, Email, schedulerService, Time, UUID, WarmupHealthState, T, healthAdjustment (+7 more)
+Cohesion: 0.15
+Nodes (19): T, Context, Email, schedulerService, Time, UUID, WarmupHealthState, T (+11 more)
 
 ### Community 253 - "Community 253"
-Cohesion: 0.17
-Nodes (21): Deterministic(), Campaign, Contact, Context, tasksService, ToolDef, UUID, VoiceContext (+13 more)
+Cohesion: 0.18
+Nodes (20): Campaign, Contact, Context, tasksService, ToolDef, UUID, VoiceContext, aiVarAvailableVars() (+12 more)
 
 ### Community 254 - "Community 254"
 Cohesion: 0.15
@@ -2219,8 +2218,8 @@ Cohesion: 0.08
 Nodes (24): compilerOptions, allowImportingTsExtensions, baseUrl, erasableSyntaxOnly, jsx, lib, module, moduleDetection (+16 more)
 
 ### Community 256 - "Community 256"
-Cohesion: 0.19
-Nodes (8): AdminAuditLog, AdminAuditLogSearch, AdminAuditLogsResult, searchAdminAuditLogs(), KNOWN_ACTIONS, KNOWN_ENTITY_TYPES, LIMIT_OPTIONS, ACTION_TONE
+Cohesion: 0.17
+Nodes (9): AdminAuditLog, AdminAuditLogSearch, AdminAuditLogsResult, searchAdminAuditLogs(), KNOWN_ACTIONS, KNOWN_ENTITY_TYPES, LIMIT_OPTIONS, SelectOption (+1 more)
 
 ### Community 257 - "Community 257"
 Cohesion: 0.08
@@ -2232,7 +2231,7 @@ Nodes (23): AI assistant, AI credits, AI skills, Analytics and audit, API key ac
 
 ### Community 259 - "Community 259"
 Cohesion: 0.12
-Nodes (30): automationDeliver(), closeJSON(), closeUpsertLead(), discordEmbedPayload(), discordNotify(), hubspotJSON(), hubspotUpsertContact(), pipedriveJSON() (+22 more)
+Nodes (25): AutomationConfig, FieldMapEntry, FieldTransform, applyTransform(), contactEmail(), defaultFieldMap(), defaultObject(), effectiveFieldMap() (+17 more)
 
 ### Community 260 - "Community 260"
 Cohesion: 0.14
@@ -2275,8 +2274,8 @@ Cohesion: 0.13
 Nodes (18): getManagedWorker(), getWorkerEmails(), getWorkerLiveStatus(), getWorkerLogs(), installWorker(), restartWorker(), testWorker(), uninstallWorker() (+10 more)
 
 ### Community 270 - "Community 270"
-Cohesion: 0.29
-Nodes (11): Context, Input, Result, Classify(), ClassifyContext(), ClassifyGated(), WorthModeling(), Input (+3 more)
+Cohesion: 0.19
+Nodes (15): Context, Input, Result, T, Classify(), ClassifyContext(), ClassifyGated(), IsAutomated() (+7 more)
 
 ### Community 271 - "Community 271"
 Cohesion: 0.18
@@ -2299,8 +2298,8 @@ Cohesion: 0.11
 Nodes (28): HTML, T, renderEmail(), baseData, GenerateInvitationHTML(), GenerateLoginCodeHTML(), GenerateNotificationHTML(), GenerateRegistrationCodeHTML() (+20 more)
 
 ### Community 276 - "Community 276"
-Cohesion: 0.09
-Nodes (23): CreateModal(), DeliveriesTab(), DELIVERY_STATUSES, DELIVERY_TONE, DeliveryRow(), DRAWER_TABS, DropsStrip(), EndpointDrawer() (+15 more)
+Cohesion: 0.19
+Nodes (10): RootLayout(), RippleProvider(), useRipple(), PARAM_ROUTES, ROUTE_TITLES, useDocumentTitle(), clearBadge(), loadBase() (+2 more)
 
 ### Community 277 - "Community 277"
 Cohesion: 0.11
@@ -2347,8 +2346,8 @@ Cohesion: 0.14
 Nodes (12): AgentHydratedBlock, AgentHydratedTurn, AgentSession, AgentSessionsPage, AgentStreamEvent, AgentTranscript, PendingAgentTool, createAgentSession() (+4 more)
 
 ### Community 288 - "Community 288"
-Cohesion: 0.06
-Nodes (30): AuthLayout(), useLogout(), useUser(), Google(), Logo(), Outlook(), onboardOAuthFinish(), getToken() (+22 more)
+Cohesion: 0.04
+Nodes (39): AdminPage(), ICON_SWAP, spring, AuthLayout(), useResetPassword(), Google(), Outlook(), onboardOAuthFinish() (+31 more)
 
 ### Community 289 - "Community 289"
 Cohesion: 0.13
@@ -2359,12 +2358,12 @@ Cohesion: 0.16
 Nodes (17): AvroEncoder, FutureProducer, RwLock, KafkaProducer, ToAvroValue, TrackingEvent, Arc, Box (+9 more)
 
 ### Community 291 - "Community 291"
-Cohesion: 0.09
-Nodes (27): ContentScore(), scoreTone(), CampaignLogItem, CampaignLogRow, getCampaignLogs(), scoreTemplate(), ACTIVITY_META, ActivityRow() (+19 more)
+Cohesion: 0.12
+Nodes (20): CampaignLogItem, CampaignLogRow, getCampaignLogs(), ACTIVITY_META, ActivityRow(), initials(), relativeTime(), STATUS_TONE (+12 more)
 
 ### Community 292 - "Community 292"
-Cohesion: 0.11
-Nodes (31): useCustomFieldKeys(), AnchoredFloatingOptions, caretReference(), useAnchoredFloating(), buildToken(), cleanFieldName(), isStandardKey(), parseToken() (+23 more)
+Cohesion: 0.14
+Nodes (20): useAnchoredFloating(), buildToken(), cleanFieldName(), parseToken(), SAMPLE, STANDARD_KEYS, STANDARD_VARS, TemplateVar (+12 more)
 
 ### Community 293 - "Community 293"
 Cohesion: 0.17
@@ -2379,8 +2378,8 @@ Cohesion: 0.17
 Nodes (21): T, TestConversationForTheme_EmptyReturnsRandom(), TestConversationForTheme_FallsBackOnUnknown(), TestConversationForTheme_MatchesKnownTheme(), TestExtractPlainTextFromHTML(), TestGenerateConversationEmail_FallbackSignature(), TestGenerateConversationEmail_NewEmail(), TestGenerateConversationEmail_Reply() (+13 more)
 
 ### Community 296 - "Community 296"
-Cohesion: 0.17
-Nodes (11): createDeal, creates, DEAL_OUTPUT, DEAL_SAMPLE, dealWon, deleteDeal, findDeal, newDeal (+3 more)
+Cohesion: 0.10
+Nodes (20): pruneEmpty(), createDeal, creates, DEAL_OUTPUT, DEAL_SAMPLE, dealWon, deleteDeal, findDeal (+12 more)
 
 ### Community 297 - "Community 297"
 Cohesion: 0.10
@@ -2391,8 +2390,8 @@ Cohesion: 0.19
 Nodes (10): AuthCheckResult, AccountAnalytics, APIClient, Bool, EmailAccount, MailboxUpdateBody, String, Void (+2 more)
 
 ### Community 299 - "Community 299"
-Cohesion: 0.08
-Nodes (31): ComposeDraftsItem(), bareEmail(), ComposeWindow(), ComposeWindowInner(), draftSnapshot(), SCHEDULE_PRESETS, OutboxIndicator(), secondsLeft() (+23 more)
+Cohesion: 0.04
+Nodes (55): AIDraftGrounding, AnimatedHeight(), ComposeDraftsItem(), bareEmail(), ComposeWindow(), ComposeWindowInner(), draftSnapshot(), SCHEDULE_PRESETS (+47 more)
 
 ### Community 300 - "Community 300"
 Cohesion: 0.07
@@ -2411,8 +2410,8 @@ Cohesion: 0.10
 Nodes (20): Automation advanced expressions, Automation variables (per trigger), Comparing values with eq, Conditionals, Custom fields, Fallbacks (default values), Functions, Gotchas (+12 more)
 
 ### Community 304 - "Community 304"
-Cohesion: 0.11
-Nodes (20): CampaignCreateFlow, Field, description, folderSearch, name, Page, folder, name (+12 more)
+Cohesion: 0.30
+Nodes (12): Context, Pool, T, RunMigrations(), main(), assertOrgExists(), assertUserExists(), countRows() (+4 more)
 
 ### Community 305 - "Community 305"
 Cohesion: 0.20
@@ -2435,8 +2434,8 @@ Cohesion: 0.23
 Nodes (8): Context, Pool, Subscription, SubscriptionWithLimits, UUID, NewSubscriptionRepository(), SubscriptionRepository, StripeWebhookEvent
 
 ### Community 310 - "Community 310"
-Cohesion: 0.10
-Nodes (20): listData(), addContactToCampaign, CONTACT_OUTPUT, CONTACT_SAMPLE, contactIdField, createContact, createContactNote, creates (+12 more)
+Cohesion: 0.09
+Nodes (21): listData(), addContactToCampaign, CONTACT_OUTPUT, CONTACT_SAMPLE, contactIdField, createContact, createContactNote, creates (+13 more)
 
 ### Community 311 - "Community 311"
 Cohesion: 0.20
@@ -2444,19 +2443,19 @@ Nodes (18): Realtime.Connections, count(), count_ip(), do_track(), do_untrack(),
 
 ### Community 312 - "Community 312"
 Cohesion: 0.09
-Nodes (34): Accessory, Badges, CRMBrowser, CRMBrowserShell, CRMCircleButton, CRMColorChip, CRMDeal, CRMDrawer (+26 more)
+Nodes (33): Accessory, Badges, CRMBrowser, CRMBrowserShell, CRMCircleButton, CRMDeal, CRMDrawer, CRMDrawerBadge (+25 more)
 
 ### Community 313 - "Community 313"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib, module, moduleDetection, moduleResolution, noEmit (+11 more)
 
 ### Community 314 - "Community 314"
-Cohesion: 0.09
-Nodes (19): CreateWorkerInput, CreateWorkerResponse, ManagedWorker, WorkerInstallState, WorkerLiveStatus, WorkerRiskPool, WorkerType, SmartLabel() (+11 more)
+Cohesion: 0.13
+Nodes (11): CreateWorkerInput, CreateWorkerResponse, ManagedWorker, WorkerInstallState, WorkerLiveStatus, WorkerRiskPool, WorkerType, listManagedWorkers() (+3 more)
 
 ### Community 315 - "Community 315"
-Cohesion: 0.29
-Nodes (9): CampaignSender, CampaignSenderInput, DB, Error, Tx, campaignSenderQuerier, NewCampaignRepostory(), readCampaignSendersTx() (+1 more)
+Cohesion: 0.23
+Nodes (9): formatAbsolute(), formatRemaining(), PendingDeletionBanner(), Props, DangerZoneStatus, getAccountDangerZone(), DeletionResourceType, DeletionStatus (+1 more)
 
 ### Community 316 - "Community 316"
 Cohesion: 0.22
@@ -2491,8 +2490,8 @@ Cohesion: 0.14
 Nodes (9): ActiveSession, useRevokeOtherSessions(), useRevokeSession(), useSessions(), PROVIDER_LABELS, SessionManager(), listSessions(), revokeOtherSessions() (+1 more)
 
 ### Community 324 - "Community 324"
-Cohesion: 0.17
-Nodes (12): CRMTaskCreateSheet, CRMTasksSidebar, CRMTasksView, TaskBucket, CRMTaskScope, CRMTasksStore, Bool, CGFloat (+4 more)
+Cohesion: 0.16
+Nodes (13): CRMColorChip, CRMTaskCreateSheet, CRMTasksSidebar, CRMTasksView, TaskBucket, CRMTaskScope, CRMTasksStore, Bool (+5 more)
 
 ### Community 325 - "Community 325"
 Cohesion: 0.17
@@ -2511,16 +2510,16 @@ Cohesion: 0.20
 Nodes (16): ContactReader, DraftPublisher, OrgReader, Service, buildReplyPrompt(), NewService(), replySubject(), SkillsSource (+8 more)
 
 ### Community 329 - "Community 329"
-Cohesion: 0.14
-Nodes (23): Context, UUID, T, Config, Context, Store, T, NewFromEnv() (+15 more)
+Cohesion: 0.17
+Nodes (17): Context, UUID, T, Config, Context, Event, InitSentry(), summarizeSentryEvent() (+9 more)
 
 ### Community 330 - "Community 330"
 Cohesion: 0.24
 Nodes (16): BookingMatcher, CalComPayload, calComContactHint(), calendlyLocation(), HandleCalComEvent(), HandleCalendlyEvent(), NewBookingMatcher(), CalendlyPayload (+8 more)
 
 ### Community 331 - "Community 331"
-Cohesion: 0.26
-Nodes (9): Context, Notification, service, UUID, absoluteLink(), EmailDailyCap(), notifIDs(), GenerateDigestHTML() (+1 more)
+Cohesion: 0.21
+Nodes (12): Context, Duration, Notification, service, NotificationCategory, UUID, absoluteLink(), EmailDailyCap() (+4 more)
 
 ### Community 332 - "Community 332"
 Cohesion: 0.21
@@ -2576,7 +2575,7 @@ Nodes (13): NewNoOpService(), NoOpService, AuditAction, AuditEntityType, AuditLo
 
 ### Community 345 - "Community 345"
 Cohesion: 0.13
-Nodes (10): createTemplate(), duplicateTemplate(), getTemplate(), listTemplates(), reorderTemplates(), CreateTemplateInput, RenderedTemplate, TemplatesResult (+2 more)
+Nodes (14): Expansion target, Gates that remain closed, Immediate next action, Microsoft 365 admin work needed, Microsoft 365 Graph app-only read, Pattrn Warmbly mailbox expansion plan - 2026-08-01, Read-only inventory performed, Suggested wave sequence (+6 more)
 
 ### Community 346 - "Community 346"
 Cohesion: 0.24
@@ -2617,10 +2616,6 @@ Nodes (18): A/B analysis, Breakdown and account health, Comparing campaigns, Dai
 ### Community 355 - "Community 355"
 Cohesion: 0.11
 Nodes (18): Authentication check, Connecting an email account, Daily campaign cap, Health states and warmup pools, How mailboxes are assigned to workers, How many mailboxes you can connect, IMAP / SMTP (any other provider), Mailbox health (+10 more)
-
-### Community 356 - "Community 356"
-Cohesion: 0.18
-Nodes (5): sampleContact(), templatePreviewRequest, Contact, Context, Handler
 
 ### Community 357 - "Community 357"
 Cohesion: 0.29
@@ -2679,20 +2674,20 @@ Cohesion: 0.21
 Nodes (15): ReferralAttributor, NewService(), TwoFAChallenger, AuthRepository, ExternalAuth, IDTokenVerifier, AuthService, Cache (+7 more)
 
 ### Community 371 - "Community 371"
-Cohesion: 0.17
-Nodes (10): pruneEmpty(), createCategory, createFolder, creates, createTag, GROUP_SAMPLE, groupCreate(), searches (+2 more)
+Cohesion: 0.30
+Nodes (14): Context, Pool, UUID, seedAnalytics(), seedAPIKey(), seedAuditLog(), seedContactActivities(), seedDeliverabilityEvents() (+6 more)
 
 ### Community 372 - "Community 372"
-Cohesion: 0.18
-Nodes (18): AddServerDrawer(), ConnectionsSettingsPage(), ServerCard(), createMCPServer(), deleteMCPServer(), listMCPServers(), refreshMCPServer(), updateMCPServer() (+10 more)
+Cohesion: 0.13
+Nodes (10): initialState, Purpose, purposeDefaults, WizardState, convertWorkerToDedicated(), createWorker(), installWorker(), preflightWorker() (+2 more)
 
 ### Community 373 - "Community 373"
 Cohesion: 0.20
 Nodes (15): CapabilityAction, CapabilityObject, CapabilityPicker, IntegrationAction, IntegrationProvider, CapabilityAction, CapabilityObject, CapabilityPicker (+7 more)
 
 ### Community 374 - "Community 374"
-Cohesion: 0.43
-Nodes (4): Context, Error, Handler, Invocation
+Cohesion: 0.16
+Nodes (6): useAPIPermissions(), useCreateAPIKey(), ConfigureStep(), Preset, Step, ScopePicker()
 
 ### Community 375 - "Community 375"
 Cohesion: 0.36
@@ -2703,8 +2698,8 @@ Cohesion: 0.20
 Nodes (16): dwellSeconds(), engagementPlan(), humanizeFireAt(), rollPct(), splitEngagementLegs(), TestDwellSeconds_HeavyTailedBias(), TestDwellSeconds_WithinBounds(), TestEngagementPlan_AlwaysFoldersFirst() (+8 more)
 
 ### Community 377 - "Community 377"
-Cohesion: 0.42
-Nodes (9): Context, Error, Tx, SyncCampaignEmailTags(), SyncCampaignFolders(), SyncEmailTags(), SyncRelation(), RelationSyncInput (+1 more)
+Cohesion: 0.22
+Nodes (13): Client, Conn, Context, Dialer, Duration, IP, allowUnsafe(), Client() (+5 more)
 
 ### Community 378 - "Community 378"
 Cohesion: 0.11
@@ -2723,8 +2718,8 @@ Cohesion: 0.31
 Nodes (10): Context, CreateTeam, Error, Team, UpdateTeam, UUID, NewService(), toErrx() (+2 more)
 
 ### Community 382 - "Community 382"
-Cohesion: 0.29
-Nodes (10): Context, CreateReplyTemplate, Error, ReplyTemplate, UpdateReplyTemplate, UUID, RenderedReplyTemplate, NewService() (+2 more)
+Cohesion: 0.25
+Nodes (11): Context, CreateReplyTemplate, Error, ReplyTemplate, UpdateReplyTemplate, UUID, RenderedReplyTemplate, NewService() (+3 more)
 
 ### Community 383 - "Community 383"
 Cohesion: 0.27
@@ -2767,16 +2762,16 @@ Cohesion: 0.12
 Nodes (17): Delete a device token, Get notification preferences, List notifications, Mark all read, Mark one read, Notification preferences and feed, Register a device token, Request body (+9 more)
 
 ### Community 393 - "Community 393"
-Cohesion: 0.18
-Nodes (17): isAllowlistedAIAction(), parseNativeConfig(), parseUUIDList(), validateAIStepConfig(), validateAISwitchConfig(), validateNativeActionConfig(), nativeActionConfig, NativeActions (+9 more)
+Cohesion: 0.30
+Nodes (13): Context, Pool, UUID, devClassify(), devDayExpr(), devProgressRows(), seedDevCampaignLogs(), seedDevProgress() (+5 more)
 
 ### Community 394 - "Community 394"
 Cohesion: 0.23
 Nodes (7): BookingMatcher, meetingEventTypes(), EventType, MeetingBooking, UUID, WebhookEventType, MeetingLifecycle
 
 ### Community 395 - "Community 395"
-Cohesion: 0.18
-Nodes (11): Field, email, imapHost, imapPass, imapPort, imapUser, name, smtpHost (+3 more)
+Cohesion: 0.19
+Nodes (10): Bool, CGFloat, Color, Int, String, UniboxGroupCount, UniboxScope, Void (+2 more)
 
 ### Community 396 - "Community 396"
 Cohesion: 0.13
@@ -2791,8 +2786,8 @@ Cohesion: 0.12
 Nodes (16): EndpointUsage, AccountDailyUsage, AccountHealth, AccountHealthSummary, AccountsUsage, APIUsage, CampaignDailyStats, CampaignHourlyStats (+8 more)
 
 ### Community 399 - "Community 399"
-Cohesion: 0.25
-Nodes (16): AgentEvent, AgentEventType, AgentMessage, AgentRequest, AgentResult, CompletionRequest, PendingToolCall, Provider (+8 more)
+Cohesion: 0.33
+Nodes (13): AgentEvent, AgentEventType, AgentMessage, AgentRequest, AgentResult, CompletionRequest, PendingToolCall, Provider (+5 more)
 
 ### Community 400 - "Community 400"
 Cohesion: 0.12
@@ -2819,8 +2814,8 @@ Cohesion: 0.29
 Nodes (12): Context, EmailParent, Time, UUID, WMail, Attachment, buildSendHeaders(), toGoogAttachments() (+4 more)
 
 ### Community 406 - "Community 406"
-Cohesion: 0.40
-Nodes (5): WarmupOffer, active, failed, offer, starting
+Cohesion: 0.17
+Nodes (22): ComposeAIDraftRequest, ComposeAIDraftResponse, ComposeCandidate, ComposeCandidatesResponse, ComposeDraft, ComposeDraftPayload, ComposeDraftsPage, ComposeGrounding (+14 more)
 
 ### Community 407 - "Community 407"
 Cohesion: 0.27
@@ -2864,7 +2859,7 @@ Nodes (8): containsSpamFlag(), extractHeaderValue(), EmailInboxEvent, JobsServic
 
 ### Community 418 - "Community 418"
 Cohesion: 0.19
-Nodes (12): ContactSequencePair, Campaign, Context, schedulerService, Time, UUID, Campaign, ScheduleWindows (+4 more)
+Nodes (13): ContactSequencePair, Campaign, Context, schedulerService, Time, UUID, Campaign, ScheduleWindows (+5 more)
 
 ### Community 419 - "Community 419"
 Cohesion: 0.32
@@ -2883,8 +2878,8 @@ Cohesion: 0.19
 Nodes (5): parseCursor(), parseDateRange(), parseLimit(), Time, UUID
 
 ### Community 423 - "Community 423"
-Cohesion: 0.15
-Nodes (17): oaiChoice, oaiMessage, oaiRequest, oaiResponseFormat, oaiStreamChunk, oaiStreamOptions, oaiTool, oaiToolCall (+9 more)
+Cohesion: 0.17
+Nodes (15): oaiChoice, oaiMessage, oaiRequest, oaiResponseFormat, oaiStreamOptions, oaiTool, oaiToolCall, oaiToolFunc (+7 more)
 
 ### Community 425 - "Community 425"
 Cohesion: 0.25
@@ -3020,7 +3015,7 @@ Nodes (15): Add a team member, Create a team, Delete a team, Get a team, List te
 
 ### Community 459 - "Community 459"
 Cohesion: 0.13
-Nodes (14): Delete a lead-sync source, Disconnect, Get a connection, Get the connection webhook secret, List event subscriptions, List lead-sync sources, Meetings summary, Response (+6 more)
+Nodes (14): Delete a lead-sync source, Delete an event subscription, Disconnect, Get a connection, List event subscriptions, List the integration catalog, Meetings summary, Response (+6 more)
 
 ### Community 460 - "Community 460"
 Cohesion: 0.13
@@ -3055,8 +3050,8 @@ Cohesion: 0.20
 Nodes (7): CampaignAddLeadsSheet, Bool, Contact, ContactSearchBody, Set, String, Void
 
 ### Community 468 - "Community 468"
-Cohesion: 0.18
-Nodes (12): AuthButton(), OTPInput(), OTPInputProps, LoginConfirmPage(), RegisterConfirmPage(), ResetPasswordConfirmPage(), strengthConfig, useLoginConfirmForm() (+4 more)
+Cohesion: 0.16
+Nodes (13): AuthButton(), useResetPasswordConfirm(), ResetPasswordConfirmPage(), strengthConfig, empty, StrengthResult, usePasswordStrength(), ZxcvbnFn (+5 more)
 
 ### Community 469 - "Community 469"
 Cohesion: 0.14
@@ -3095,8 +3090,8 @@ Cohesion: 0.14
 Nodes (13): Getting back in, Health states and auto-block, How warmup works, Keeping warmup out of your inbox, Pool safety and abuse protection, Pools: free vs premium, Recommended posture, Related guides (+5 more)
 
 ### Community 478 - "Community 478"
-Cohesion: 0.17
-Nodes (14): Cache, Client, Duration, Response, WebhookDelivery, AppDomainResolver, DeliveryWorker, DeliveryWorkerOptions (+6 more)
+Cohesion: 0.28
+Nodes (11): Config, Context, Store, T, NewFromEnv(), TestNewFromEnv_FilesystemHappy(), TestNewFromEnv_FilesystemNeedsRoot(), TestNewFromEnv_FSAlias() (+3 more)
 
 ### Community 480 - "Community 480"
 Cohesion: 0.16
@@ -3107,7 +3102,7 @@ Cohesion: 0.29
 Nodes (7): nextCursor(), referralPaging(), Context, CPagination, Error, Handler, UUID
 
 ### Community 482 - "Community 482"
-Cohesion: 0.19
+Cohesion: 0.21
 Nodes (8): min(), CampaignDeliverability, DeliverabilityDailyPoint, DeliverabilityDashboard, MailboxDeliverability, Time, WarmupDomainPlacement, DeliverabilityScore()
 
 ### Community 483 - "Community 483"
@@ -3143,8 +3138,8 @@ Cohesion: 0.34
 Nodes (9): Context, Duration, RawMessage, Client, NewClient(), parseRPC(), rpcRequest, rpcResponse (+1 more)
 
 ### Community 491 - "Community 491"
-Cohesion: 0.10
-Nodes (24): split(), splitAndTrim(), trim(), service, Context, Error, UUID, Attachment (+16 more)
+Cohesion: 0.11
+Nodes (22): Attachment, header, buildMixedMIME(), writeBase64Wrapped(), writeTextPart(), split(), splitAndTrim(), trim() (+14 more)
 
 ### Community 492 - "Community 492"
 Cohesion: 0.31
@@ -3163,8 +3158,8 @@ Cohesion: 0.32
 Nodes (8): ContactResearchRun, Context, DB, Row, UUID, NewResearchRepository(), scanRun(), ResearchRepository
 
 ### Community 496 - "Community 496"
-Cohesion: 0.16
-Nodes (11): AIVariableGenerateRequest, AIVariableGenerateResponse, generateAIVariable(), edit(), EditRequest, EditResponse, write(), WRITE_TONES (+3 more)
+Cohesion: 0.32
+Nodes (7): ContentScore(), scoreTone(), scoreTemplate(), ScoreTemplateRequest, TemplateScore, TemplateScoreIssue, useScoreTemplate()
 
 ### Community 497 - "Community 497"
 Cohesion: 0.14
@@ -3259,8 +3254,8 @@ Cohesion: 0.27
 Nodes (9): AISpendSettings, Context, DB, Duration, Row, UUID, AISettingsRepository, NewAISettingsRepository() (+1 more)
 
 ### Community 521 - "Community 521"
-Cohesion: 0.19
-Nodes (7): oaiError, oaiResponse, openAIProvider, Bool, Client, Reader, SearchClient
+Cohesion: 0.12
+Nodes (15): oaiError, oaiResponse, oaiStreamChunk, openAIProvider, AgentRequest, AgentResult, Bool, Client (+7 more)
 
 ### Community 522 - "Community 522"
 Cohesion: 0.29
@@ -3280,7 +3275,7 @@ Nodes (11): Realtime.ApiKey, cache_key_data(), check_expiration(), check_ip_rest
 
 ### Community 526 - "Community 526"
 Cohesion: 0.15
-Nodes (12): Create a sequence, Delete a campaign, Delete a sequence, Get advanced settings, List campaigns, List sequences, Response, Response (+4 more)
+Nodes (12): Create a sequence, Delete a campaign, Delete a sequence, Get a campaign, List sequences, Response, Response, Response (+4 more)
 
 ### Community 527 - "Community 527"
 Cohesion: 0.15
@@ -3315,12 +3310,8 @@ Cohesion: 0.23
 Nodes (7): QuarantineEvaluator, Context, DecisionLogRepository, Duration, WorkerCapacityRowDB, WorkerHealthState, WorkerRepository
 
 ### Community 537 - "Community 537"
-Cohesion: 0.15
-Nodes (16): hashURL(), htmlToText(), truncateRunes(), clampSearchLimit(), FormatSearchResults(), NewSearchClient(), SearchClient, SearchResult (+8 more)
-
-### Community 538 - "Community 538"
-Cohesion: 0.28
-Nodes (10): Attachment, header, buildMixedMIME(), writeBase64Wrapped(), writeTextPart(), Context, EmailMessageData, Client (+2 more)
+Cohesion: 0.29
+Nodes (9): clampSearchLimit(), FormatSearchResults(), NewSearchClient(), SearchClient, SearchResult, searxngClient, serperClient, Client (+1 more)
 
 ### Community 539 - "Community 539"
 Cohesion: 0.17
@@ -3343,8 +3334,8 @@ Cohesion: 0.23
 Nodes (5): GetAdminRolePermissions(), GetAllPermissionInfos(), AdminPermission, AdminRoleName, PermissionInfo
 
 ### Community 544 - "Community 544"
-Cohesion: 0.11
-Nodes (18): codeIdentifier(), sseEmitter(), parseCreditLimit(), Context, Error, Handler, Invocation, Context (+10 more)
+Cohesion: 0.09
+Nodes (22): codeIdentifier(), sseEmitter(), parseCreditLimit(), Context, Error, Handler, Invocation, Context (+14 more)
 
 ### Community 545 - "Community 545"
 Cohesion: 0.17
@@ -3399,8 +3390,8 @@ Cohesion: 0.31
 Nodes (7): Context, Pool, UUID, WarmupRoutingRule, WarmupRoutingMatchType, NewWarmupRoutingRepository(), WarmupRoutingRepository
 
 ### Community 559 - "Community 559"
-Cohesion: 0.26
-Nodes (6): getMyInvitations(), RawResponse, getPendingInvitations(), RawResponse, Invitation, inviteMember()
+Cohesion: 0.36
+Nodes (11): Context, Pool, Result, UUID, acmeContacts(), globexContacts(), lower(), seedCampaignLogs() (+3 more)
 
 ### Community 560 - "Community 560"
 Cohesion: 0.23
@@ -3455,7 +3446,7 @@ Cohesion: 0.28
 Nodes (8): Context, Error, Time, Token, tokenService, UUID, RegisteredClaims, TokenClaims
 
 ### Community 575 - "Community 575"
-Cohesion: 0.32
+Cohesion: 0.30
 Nodes (7): putPublicObject(), readAvatarUpload(), Context, Error, Handler, Store, UUID
 
 ### Community 576 - "Community 576"
@@ -3475,8 +3466,8 @@ Cohesion: 0.29
 Nodes (6): mb(), sanitizeFilename(), CampaignAttachment, Context, H, Handler
 
 ### Community 580 - "Community 580"
-Cohesion: 0.24
-Nodes (7): appealWarmupBan(), getWarmupBanStatus(), WarmupBanBanner(), useAppealWarmupBan(), useWarmupBanStatus(), WarmupAppealResult, WarmupBanStatus
+Cohesion: 0.27
+Nodes (7): CampaignAnalytics, CampaignSummary, SequenceStats, DailyStats, getCampaignDailyStats(), isoDay(), useCampaignDailyStats()
 
 ### Community 581 - "Community 581"
 Cohesion: 0.40
@@ -3602,6 +3593,10 @@ Nodes (8): Client, FromEnv(), parseP8(), Notification, Context, Mutex, PrivateKe
 Cohesion: 0.22
 Nodes (9): CreatePrimaryIPRequest, CreateServerRequest, Image, Location, PrimaryIP, Provider, Server, ServerType (+1 more)
 
+### Community 614 - "Community 614"
+Cohesion: 0.36
+Nodes (6): AutomationWrite, BuildInboundAutomationURL(), decorateAutomation(), generateAutomationInboundToken(), isInboundTrigger(), Automation
+
 ### Community 615 - "Community 615"
 Cohesion: 0.27
 Nodes (6): authDomainOf(), TestAuthDomainOf(), JobsService, Context, Duration, T
@@ -3641,6 +3636,10 @@ Nodes (9): OAuth app allowed domains, Reading the delivery log, Redelivering a f
 ### Community 624 - "Community 624"
 Cohesion: 0.42
 Nodes (4): Context, Error, Handler, UUID
+
+### Community 625 - "Community 625"
+Cohesion: 0.22
+Nodes (9): SmartLabel(), smartLabels(), smartTone(), TagEditor(), TagsCell(), TONE_BY_PREFIX, AdminWorkerDetailPage(), listAllWorkerTags() (+1 more)
 
 ### Community 626 - "Community 626"
 Cohesion: 0.29
@@ -3819,8 +3818,8 @@ Cohesion: 0.22
 Nodes (8): RawMessage, Time, UUID, MCPTool, CreateMCPServer, MCPServer, MCPTool, UpdateMCPServer
 
 ### Community 672 - "Community 672"
-Cohesion: 0.43
-Nodes (5): Campaign, CampaignsResult, Scannable, getCampaign(), getCampaignFull()
+Cohesion: 0.31
+Nodes (7): hashURL(), htmlToText(), truncateRunes(), Deps, Context, Invocation, RawMessage
 
 ### Community 673 - "Community 673"
 Cohesion: 0.31
@@ -3828,15 +3827,15 @@ Nodes (6): Context, Error, emailRepository, SmtpImap, Time, UUID
 
 ### Community 674 - "Community 674"
 Cohesion: 0.33
-Nodes (6): Context, DB, UUID, EmailGraphDeltaRepository, NewEmailGraphDeltaRepository(), pgEmailGraphDeltaRepository
+Nodes (6): DateRange, CampaignComparison, CampaignComparisonItem, compareCampaigns(), isoDay(), useCompareCampaigns()
 
 ### Community 675 - "Community 675"
 Cohesion: 0.36
 Nodes (5): Context, Pool, UUID, NewTrackingDedupeRepository(), TrackingDedupeRepository
 
 ### Community 676 - "Community 676"
-Cohesion: 0.31
-Nodes (4): TaskType, createTaskType(), listTaskTypes(), updateTaskType()
+Cohesion: 0.25
+Nodes (6): AccountHealthSummary, DashboardDailyStats, DashboardOverallStats, RecentActivityItem, TopCampaignStats, getDashboard()
 
 ### Community 677 - "Community 677"
 Cohesion: 0.42
@@ -3871,8 +3870,8 @@ Cohesion: 0.22
 Nodes (8): description, engines, node, name, private, scripts, validate, version
 
 ### Community 685 - "Community 685"
-Cohesion: 0.42
-Nodes (7): AISkill, CreateAISkill, UpdateAISkill, createSkill(), deleteSkill(), listSkills(), updateSkill()
+Cohesion: 0.25
+Nodes (6): getUsageOverview(), AccountsUsage, APIUsage, CampaignsUsage, ContactsUsage, EndpointUsage
 
 ### Community 686 - "Community 686"
 Cohesion: 0.25
@@ -3943,8 +3942,8 @@ Cohesion: 0.36
 Nodes (6): Code, Error, JSON(), New(), response, Context
 
 ### Community 705 - "Community 705"
-Cohesion: 0.31
-Nodes (6): WebhookToolsBlock(), getWebhookSecret(), WebhookSecretInfo, testConnection(), useRevealWebhookSecret(), useTestConnection()
+Cohesion: 0.33
+Nodes (6): OTPInput(), OTPInputProps, LoginConfirmPage(), RegisterConfirmPage(), useLoginConfirmForm(), useRegisterConfirmForm()
 
 ### Community 706 - "Community 706"
 Cohesion: 0.36
@@ -4023,16 +4022,16 @@ Cohesion: 0.43
 Nodes (7): T, TestFromEnv_AWSFallsBackToProvidedKeyID(), TestFromEnv_AWSWithoutAnyKeyIDErrors(), TestFromEnv_DefaultsToAWS(), TestFromEnv_LocalMissingKeyErrors(), TestFromEnv_LocalRoundTrip(), TestFromEnv_UnknownProvider()
 
 ### Community 727 - "Community 727"
-Cohesion: 0.31
-Nodes (6): AgentRequest, AgentResult, CompletionRequest, Context, VoiceContext, WritingResult
+Cohesion: 0.33
+Nodes (5): CampaignABVariant, CreateCampaignABVariantRequest, Row, UpdateCampaignABVariantRequest, scanABVariant()
 
 ### Community 728 - "Community 728"
 Cohesion: 0.39
 Nodes (4): Context, workerRepository, UUID, Worker
 
 ### Community 729 - "Community 729"
-Cohesion: 0.28
-Nodes (4): createConnectionEvent(), CreateConnectionEventInput, deleteConnectionEvent(), IntegrationEventSubscription
+Cohesion: 0.46
+Nodes (4): scheduleAccountDeletion(), ScheduleDeletionPayload, scheduleOrganizationDeletion(), useScheduleOrganizationDeletion()
 
 ### Community 730 - "Community 730"
 Cohesion: 0.25
@@ -4159,8 +4158,8 @@ Cohesion: 0.29
 Nodes (6): APIClient, Bool, String, MoreSecurityStore, SecurityInfoView, PasskeyCredential
 
 ### Community 766 - "Community 766"
-Cohesion: 0.14
-Nodes (9): ICON_SWAP, spring, Props, API_URL, APP_URL, PopupCenter(), TRACKING_DOMAIN, TURNSTILE_KEY (+1 more)
+Cohesion: 0.29
+Nodes (3): Props, TURNSTILE_KEY, Props
 
 ### Community 767 - "Community 767"
 Cohesion: 0.33
@@ -4195,8 +4194,8 @@ Cohesion: 0.38
 Nodes (7): TeamMember, Time, UUID, CreateTeam, Team, TeamMember, UpdateTeam
 
 ### Community 775 - "Community 775"
-Cohesion: 0.50
-Nodes (3): DaysToMask(), DefaultDays(), ValidateDaysMask()
+Cohesion: 0.29
+Nodes (6): Context, HandlerFunc, Handler, Session, GetAccessToken(), GetSession()
 
 ### Community 776 - "Community 776"
 Cohesion: 0.48
@@ -4228,15 +4227,15 @@ Nodes (6): compilerOptions, baseUrl, paths, files, @/*, references
 
 ### Community 784 - "Community 784"
 Cohesion: 0.29
-Nodes (4): newAnthropicProvider(), anthropicProvider, Client, ProviderConfig
+Nodes (7): Field, email, origin, password, realtime, recovery, turnstile
 
 ### Community 785 - "Community 785"
 Cohesion: 0.60
 Nodes (3): service, Context, UUID
 
 ### Community 786 - "Community 786"
-Cohesion: 0.60
-Nodes (4): T, TestDailyVolumeFactor_StableWithinDayAndRanged(), TestDailyVolumeFactor_VariesAcrossDays(), TestHumanizeSeconds_RandomisesSubMinute()
+Cohesion: 0.33
+Nodes (5): OTPCodeField, Bool, Int, String, Void
 
 ### Community 787 - "Community 787"
 Cohesion: 0.53
@@ -4543,8 +4542,8 @@ Cohesion: 0.40
 Nodes (5): Client, Config, Context, KMS, New()
 
 ### Community 878 - "Community 878"
-Cohesion: 0.12
-Nodes (16): buildReplyHeaders(), classifyReply(), cleanMessageID(), containsAnyKeyword(), parseSenderEmail(), ptrTime(), CreateCRMTask, CRMTask (+8 more)
+Cohesion: 0.43
+Nodes (4): ComposeDraftsView, ComposeDraft, String, Void
 
 ### Community 879 - "Community 879"
 Cohesion: 0.40
@@ -4567,8 +4566,8 @@ Cohesion: 0.50
 Nodes (4): Time, UUID, AIThreadDraft, InboxAgentReply
 
 ### Community 884 - "Community 884"
-Cohesion: 0.40
-Nodes (3): CampaignAdvancedSettings, T, unmarshalJSON()
+Cohesion: 0.25
+Nodes (6): CampaignAdvancedSettings, Pool, T, DefaultAdvancedOutreachSettings(), NewAdvancedOutreachRepository(), unmarshalJSON()
 
 ### Community 885 - "Community 885"
 Cohesion: 0.40
@@ -4619,7 +4618,7 @@ Cohesion: 0.50
 Nodes (3): Realtime.MixProject, deps(), project()
 
 ### Community 898 - "Community 898"
-Cohesion: 0.50
+Cohesion: 0.40
 Nodes (4): State, connected, connecting, disconnected
 
 ### Community 899 - "Community 899"
@@ -4631,8 +4630,8 @@ Cohesion: 0.67
 Nodes (3): fromWindow(), runtimeEnv, Window
 
 ### Community 904 - "Community 904"
-Cohesion: 0.25
-Nodes (3): ErrorBoundary, RouteBoundary(), State
+Cohesion: 0.15
+Nodes (7): AppNav(), ErrorBoundary, RouteBoundary(), State, SkyChrome(), GlobalCursorsProvider(), CommandPalette()
 
 ### Community 906 - "Community 906"
 Cohesion: 0.50
@@ -4699,8 +4698,8 @@ Cohesion: 0.67
 Nodes (3): UniboxReplyRequest, UniboxSnoozeRequest, Time
 
 ### Community 927 - "Community 927"
-Cohesion: 0.36
-Nodes (5): DiscountDuration, DiscountPreview, DiscountType, validateDiscountCode(), ValidateDiscountInput
+Cohesion: 0.57
+Nodes (3): cancelAccountDeletion(), CancelDeletionPayload, cancelOrganizationDeletion()
 
 ### Community 928 - "Community 928"
 Cohesion: 0.83
@@ -4759,8 +4758,8 @@ Cohesion: 0.67
 Nodes (3): T, TestCompletedIsTerminal(), TestValidCampaignTransitions()
 
 ### Community 943 - "Community 943"
-Cohesion: 0.50
-Nodes (4): Route, oauth, smtp, undecided
+Cohesion: 0.29
+Nodes (4): DailyEmailStats, HourlyEmailStats, Time, UserGrowthStats
 
 ### Community 947 - "Community 947"
 Cohesion: 0.50
@@ -4791,8 +4790,8 @@ Cohesion: 0.67
 Nodes (3): NewService(), APIKeyRepository, Cache
 
 ### Community 980 - "Community 980"
-Cohesion: 0.33
-Nodes (5): getOverview(), UniboxCategoryOverview, UniboxMailboxOverview, UniboxOverview, UniboxTagOverview
+Cohesion: 0.53
+Nodes (4): Deps, Context, Invocation, RawMessage
 
 ### Community 1003 - "Community 1003"
 Cohesion: 0.67
@@ -4979,20 +4978,20 @@ Cohesion: 0.22
 Nodes (5): docs, browserCollections, create, create, create
 
 ### Community 1125 - "Community 1125"
-Cohesion: 0.40
-Nodes (4): TestOpenAICompleteJSONModeRetriesWhenResponseFormatUnsupported(), newOpenAIProvider(), ProviderConfig, T
+Cohesion: 0.25
+Nodes (7): TestOpenAICompleteJSONModeRetriesWhenResponseFormatUnsupported(), newOpenAIProvider(), NewProvider(), ProviderConfig, ProviderConfig, T, SearchClient
 
 ### Community 1126 - "Community 1126"
-Cohesion: 0.67
-Nodes (3): Email(), EmailBulk(), EmailName()
+Cohesion: 0.47
+Nodes (3): listAPIPermissions(), APIPermissionCategory, APIPermissionsResponse
 
 ### Community 1129 - "Community 1129"
-Cohesion: 0.47
-Nodes (4): pickVariantDeterministic(), pickVariantWeightedRandom(), CampaignABVariant, VariantSelection
+Cohesion: 0.19
+Nodes (9): breachLabel(), mergeMap(), mergeSettings(), pickVariantDeterministic(), pickVariantWeightedRandom(), AdvancedOutreachSettings, CampaignABVariant, PreflightReport (+1 more)
 
 ### Community 1134 - "Community 1134"
-Cohesion: 0.53
-Nodes (4): AIDraftGrounding, composeDraft(), ComposeDraftInput, ComposeDraftResult
+Cohesion: 0.40
+Nodes (4): AutomationRun, InsightsPanel(), listAutomationRuns(), useAutomationRuns()
 
 ### Community 1138 - "Community 1138"
 Cohesion: 0.40
@@ -5004,7 +5003,7 @@ Nodes (3): isPublicKey(), Context, Handler
 
 ### Community 1149 - "Community 1149"
 Cohesion: 0.40
-Nodes (4): pushContacts(), PushContactsInput, PushRecordResult, PushResult
+Nodes (6): actionGlyph(), AddStepMenu(), DragCreateMenu(), NodeResultRow(), nodeStatusIcon(), actionLabel()
 
 ### Community 1155 - "Community 1155"
 Cohesion: 0.60
@@ -5015,44 +5014,52 @@ Cohesion: 0.40
 Nodes (5): EmailSendError, JobEventType, MailError, DetermineErrorEventType(), MailErrorToSendError()
 
 ### Community 1398 - "Community 1398"
-Cohesion: 0.50
-Nodes (3): updateProfile(), UpdateProfileData, UpdateProfileData
+Cohesion: 0.53
+Nodes (5): isSelfMutation(), key(), markSelfMutation(), prune(), recent
 
 ### Community 1399 - "Community 1399"
 Cohesion: 0.60
 Nodes (4): T, TestLexiconNegativeInterestPhraseWinsOverInterestedSubstring(), TestLexiconPositiveInterestStillClassifiesPositive(), TestLexiconUnsubscribeStillHasHighestPriority()
 
 ### Community 1402 - "Community 1402"
-Cohesion: 0.12
-Nodes (20): PasskeyLoginBegin, PasskeyRegisterBegin, beginPasskeyLogin(), cancelPasskeyCeremony(), finishPasskeyLogin(), mapError(), passkeyAutofillSupported(), PasskeyCancelled (+12 more)
+Cohesion: 0.15
+Nodes (18): PasskeyLoginBegin, PasskeyRegisterBegin, beginPasskeyLogin(), cancelPasskeyCeremony(), finishPasskeyLogin(), mapError(), passkeyAutofillSupported(), passkeyLogin() (+10 more)
 
 ### Community 1404 - "Community 1404"
 Cohesion: 0.67
 Nodes (3): TestHandleNewEmailRejectsMissingMessage(), TestNormalizeNewEmailEventAcceptsWrappedPayload(), T
 
+### Community 1408 - "Community 1408"
+Cohesion: 0.50
+Nodes (3): Context, internalAuth(), loadInternalToken()
+
 ### Community 1413 - "Community 1413"
-Cohesion: 0.60
-Nodes (3): draftReply(), DraftReplyInput, DraftReplyResult
+Cohesion: 0.50
+Nodes (3): Context, Pool, seedLabels()
+
+### Community 1417 - "Community 1417"
+Cohesion: 0.17
+Nodes (11): getCustomFieldKeys(), useCustomFieldKeys(), AnchoredFloatingOptions, caretReference(), EditorSuggest(), Group, GROUP_ICON, HELPERS (+3 more)
 
 ## Knowledge Gaps
-- **6175 isolated node(s):** `RenderResult`, `Render`, `RenderedContent`, `Flatten`, `CollectionKey` (+6170 more)
+- **6186 isolated node(s):** `RenderResult`, `Render`, `RenderedContent`, `Flatten`, `CollectionKey` (+6181 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **188 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **185 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `main()` connect `Community 79` to `Community 519`, `Community 520`, `Community 19`, `Community 20`, `Community 534`, `Community 537`, `Community 33`, `Community 39`, `Community 555`, `Community 556`, `Community 558`, `Community 560`, `Community 50`, `Community 71`, `Community 587`, `Community 588`, `Community 589`, `Community 78`, `Community 81`, `Community 595`, `Community 85`, `Community 598`, `Community 87`, `Community 96`, `Community 100`, `Community 103`, `Community 105`, `Community 109`, `Community 627`, `Community 121`, `Community 637`, `Community 138`, `Community 149`, `Community 667`, `Community 668`, `Community 674`, `Community 163`, `Community 677`, `Community 169`, `Community 178`, `Community 183`, `Community 186`, `Community 187`, `Community 188`, `Community 197`, `Community 219`, `Community 225`, `Community 226`, `Community 749`, `Community 241`, `Community 250`, `Community 253`, `Community 308`, `Community 309`, `Community 315`, `Community 326`, `Community 329`, `Community 333`, `Community 360`, `Community 363`, `Community 364`, `Community 367`, `Community 385`, `Community 386`, `Community 390`, `Community 391`, `Community 399`, `Community 403`, `Community 407`, `Community 408`, `Community 432`, `Community 434`, `Community 435`, `Community 446`, `Community 453`, `Community 478`, `Community 489`, `Community 492`, `Community 493`, `Community 494`, `Community 495`?**
+- **Why does `main()` connect `Community 79` to `Community 519`, `Community 520`, `Community 19`, `Community 20`, `Community 534`, `Community 23`, `Community 537`, `Community 39`, `Community 555`, `Community 556`, `Community 558`, `Community 560`, `Community 49`, `Community 50`, `Community 67`, `Community 71`, `Community 587`, `Community 588`, `Community 589`, `Community 78`, `Community 81`, `Community 595`, `Community 85`, `Community 598`, `Community 87`, `Community 96`, `Community 100`, `Community 1125`, `Community 103`, `Community 105`, `Community 109`, `Community 627`, `Community 121`, `Community 637`, `Community 138`, `Community 149`, `Community 667`, `Community 668`, `Community 163`, `Community 677`, `Community 169`, `Community 178`, `Community 183`, `Community 186`, `Community 187`, `Community 188`, `Community 191`, `Community 197`, `Community 215`, `Community 219`, `Community 225`, `Community 226`, `Community 749`, `Community 241`, `Community 250`, `Community 304`, `Community 308`, `Community 309`, `Community 326`, `Community 329`, `Community 333`, `Community 360`, `Community 363`, `Community 364`, `Community 367`, `Community 884`, `Community 385`, `Community 386`, `Community 390`, `Community 391`, `Community 403`, `Community 407`, `Community 408`, `Community 432`, `Community 434`, `Community 435`, `Community 446`, `Community 453`, `Community 478`, `Community 489`, `Community 492`, `Community 493`, `Community 494`, `Community 495`?**
   _High betweenness centrality (0.047) - this node is a cross-community bridge._
-- **Why does `InternalError()` connect `Community 85` to `Community 385`, `Community 514`, `Community 770`, `Community 771`, `Community 397`, `Community 271`, `Community 146`, `Community 147`, `Community 408`, `Community 665`, `Community 673`, `Community 294`, `Community 42`, `Community 427`, `Community 555`, `Community 45`, `Community 813`, `Community 47`, `Community 432`, `Community 817`, `Community 557`, `Community 306`, `Community 308`, `Community 816`, `Community 814`, `Community 815`, `Community 186`, `Community 59`, `Community 315`, `Community 574`, `Community 575`, `Community 704`, `Community 321`, `Community 66`, `Community 195`, `Community 449`, `Community 709`, `Community 579`, `Community 581`, `Community 584`, `Community 455`, `Community 839`, `Community 203`, `Community 334`, `Community 335`, `Community 849`, `Community 850`, `Community 211`, `Community 851`, `Community 722`, `Community 723`, `Community 86`, `Community 216`, `Community 348`, `Community 221`, `Community 225`, `Community 358`, `Community 103`, `Community 377`, `Community 873`, `Community 749`, `Community 878`, `Community 630`, `Community 119`, `Community 504`, `Community 121`, `Community 381`, `Community 382`?**
+- **Why does `InternalError()` connect `Community 85` to `Community 385`, `Community 514`, `Community 770`, `Community 771`, `Community 397`, `Community 271`, `Community 146`, `Community 23`, `Community 408`, `Community 665`, `Community 154`, `Community 673`, `Community 294`, `Community 42`, `Community 427`, `Community 555`, `Community 45`, `Community 813`, `Community 47`, `Community 432`, `Community 817`, `Community 557`, `Community 306`, `Community 308`, `Community 816`, `Community 814`, `Community 815`, `Community 186`, `Community 59`, `Community 574`, `Community 575`, `Community 704`, `Community 321`, `Community 66`, `Community 195`, `Community 449`, `Community 709`, `Community 579`, `Community 64`, `Community 581`, `Community 584`, `Community 455`, `Community 203`, `Community 839`, `Community 334`, `Community 335`, `Community 849`, `Community 850`, `Community 211`, `Community 851`, `Community 722`, `Community 723`, `Community 86`, `Community 216`, `Community 348`, `Community 221`, `Community 225`, `Community 358`, `Community 103`, `Community 873`, `Community 749`, `Community 630`, `Community 119`, `Community 504`, `Community 121`, `Community 381`, `Community 382`?**
   _High betweenness centrality (0.038) - this node is a cross-community bridge._
-- **Why does `hasPrefix()` connect `Community 123` to `Community 768`, `Community 262`, `Community 135`, `Community 521`, `Community 265`, `Community 143`, `Community 275`, `Community 283`, `Community 28`, `Community 544`, `Community 417`, `Community 548`, `Community 421`, `Community 166`, `Community 295`, `Community 809`, `Community 42`, `Community 174`, `Community 698`, `Community 191`, `Community 64`, `Community 196`, `Community 839`, `Community 328`, `Community 840`, `Community 202`, `Community 204`, `Community 335`, `Community 720`, `Community 721`, `Community 466`, `Community 211`, `Community 472`, `Community 348`, `Community 736`, `Community 100`, `Community 618`, `Community 490`, `Community 878`, `Community 239`, `Community 1138`, `Community 756`, `Community 1148`?**
+- **Why does `hasPrefix()` connect `Community 123` to `Community 768`, `Community 1408`, `Community 259`, `Community 262`, `Community 135`, `Community 775`, `Community 521`, `Community 265`, `Community 275`, `Community 154`, `Community 283`, `Community 28`, `Community 544`, `Community 417`, `Community 548`, `Community 421`, `Community 166`, `Community 295`, `Community 809`, `Community 42`, `Community 174`, `Community 177`, `Community 698`, `Community 191`, `Community 196`, `Community 839`, `Community 328`, `Community 840`, `Community 202`, `Community 204`, `Community 335`, `Community 720`, `Community 721`, `Community 466`, `Community 211`, `Community 472`, `Community 348`, `Community 736`, `Community 100`, `Community 618`, `Community 490`, `Community 491`, `Community 239`, `Community 1138`, `Community 756`, `Community 1148`?**
   _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Are the 260 inferred relationships involving `InternalError()` (e.g. with `.CreateContactDeal()` and `.CreateContactTask()`) actually correct?**
   _`InternalError()` has 260 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 191 inferred relationships involving `GetOrganizationID()` (e.g. with `.logAudit()` and `.AddContacts()`) actually correct?**
   _`GetOrganizationID()` has 191 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `RenderResult`, `Render`, `RenderedContent` to the rest of the system?**
-  _6175 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _6186 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.03298350824587706 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.026185816792470413 - nodes in this community are weakly interconnected._

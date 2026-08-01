@@ -14468,5 +14468,10 @@
     "mtime": 1785585778.8464499,
     "ast_hash": "c313fc1221cb03fe8cba34f193c6ace7",
     "semantic_hash": ""
+  },
+  "docs/pattrn-warmbly-mailbox-expansion-plan-2026-08-01.md": {
+    "mtime": 1785598124.9395244,
+    "ast_hash": "454ecdb27c9755874103fa5909ad072c",
+    "semantic_hash": ""
   }
 }
