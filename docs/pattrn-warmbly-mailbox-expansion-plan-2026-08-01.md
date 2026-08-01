@@ -34,15 +34,25 @@ No additional `pattrndata.com`, `pattrndata.co.uk`, or `pattrndata.ai` users/mai
 
 ## Expansion target
 
-Move from 3 warming mailboxes to a believable first-stage pool of **20 active warmup senders**.
+The business target remains the previously stated **4,000 emails/day** capacity, but only after warmup processing and delivery proof are working cleanly.
 
-That means adding **17 more mailbox users/shared mailboxes** first, then adding more kiosk licences for a second expansion wave if needed.
+Mailbox math for that target:
+
+| Safe per-mailbox daily volume | Mailboxes needed for 4,000/day | With 20% headroom |
+|---:|---:|---:|
+| 40/day | 100 | 120 |
+| 50/day | 80 | 96 |
+
+So the real operating target is **80 to 100 warmed mailboxes**, with **96 to 120 mailboxes** preferred if we want headroom, throttling room, sick-day capacity, and less pressure on any one account.
+
+The 20-mailbox pool is only the first healthy processing milestone, not the final target.
 
 Recommended staged targets:
 
-1. **Now:** 20 total warmup mailboxes.
-2. **After proof and health stability:** 30 total.
-3. **Later:** 40 to 50 total if Warmbly Cloud/shared-pool capacity, domain health, and Microsoft sending signals remain clean.
+1. **Proof gate:** keep the current 3 running long enough to prove scheduled warmup processing, worker send success, Graph Sent Items, and no DLQ/campaign side effects.
+2. **First healthy pool:** 20 total warmup mailboxes.
+3. **Scaling pool:** 40 to 50 total warmup mailboxes once the first pool stays clean.
+4. **4,000/day capacity pool:** 80 to 100 total warmed mailboxes, or 96 to 120 with 20% headroom.
 
 ## Microsoft 365 admin work needed
 
@@ -76,17 +86,25 @@ For each newly created mailbox:
 
 ## Suggested wave sequence
 
+### Wave 0: prove processing with the current 3
+
+Do not treat the 4,000/day plan as active until the scheduled warmup chain is proven. First prove task pickup, worker send-success logs, Graph Sent Items readback, no new DLQ entries, no unintended campaign activity, and healthy mailbox state for the current three.
+
 ### Wave 1: get to 10 total
 
 Add 7 more mailboxes, onboard them as recipient-only first, then enable warmup after Graph read and Warmbly row health pass.
 
 ### Wave 2: get to 20 total
 
-Add the next 10 mailboxes. Repeat the same read-only Graph gate, Warmbly onboarding gate, recipient-only holding state, then sender activation.
+Add the next 10 mailboxes. This is the first believable processing pool and the first meaningful Warmbly health milestone.
 
-### Wave 3: optional 30 to 50
+### Wave 3: get to 40 to 50 total
 
-Only after a few days of clean warmup proof, add further kiosk licences and mailboxes toward 30, then 40 to 50.
+Add 20 to 30 more mailboxes after a few days of clean processing and delivery proof. This is the ramp-validation pool.
+
+### Wave 4: get to 80 to 100 total, preferably 96 to 120 with headroom
+
+Only after Wave 3 is clean, add enough kiosk/shared-mailbox capacity to support the 4,000/day target. At 40/day this needs 100 warmed mailboxes, or 120 with 20% headroom. At 50/day this needs 80 warmed mailboxes, or 96 with 20% headroom.
 
 ## Gates that remain closed
 
