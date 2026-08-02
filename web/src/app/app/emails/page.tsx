@@ -60,6 +60,12 @@ const DefaultFolder = {
     color: "#c4c8cf",
 } as Tag;
 
+// The default API/page size is 50, which makes larger sender fleets look
+// incomplete at first glance. The backend accepts up to 200, so the account
+// page asks for the full current fleet in one page and still renders a
+// load-more control if a future workspace grows beyond that.
+const MAILBOX_PAGE_LIMIT = 200;
+
 /* ── health helpers ───────────────────────────────── */
 
 // Rank used to detect when a mailbox's health worsens between refreshes, so we
@@ -81,7 +87,7 @@ export default function AddressesPage() {
 
     const [query, setQuery] = React.useState<string>("");
     const [tag, setTag] = React.useState<string>("");
-    const emailsData = useEmails({ query, tag });
+    const emailsData = useEmails({ query, tag, limit: MAILBOX_PAGE_LIMIT });
     const [selected, setSelected] = React.useState<string[]>([]);
     const [view, setView] = React.useState<string>("");
     const [viewTab, setViewTab] = React.useState<string>("overview");
@@ -183,6 +189,14 @@ export default function AddressesPage() {
         return s;
     }, [emailsData.emails]);
 
+    const listedCount = emailsData.emails?.length ?? 0;
+    const totalCount = emailsData.data?.pages[0]?.pagination.total ?? listedCount;
+    const countLabel = emailsData.data
+        ? listedCount === totalCount
+            ? `${totalCount} mailboxes`
+            : `${listedCount} of ${totalCount} mailboxes`
+        : "Loading…";
+
     // Mailboxes actively warming (enabled and not paused). Warmup pairs mailboxes
     // with each other, so too few starves it; the notice below warns on that.
     const warmupActive = useMemo(
@@ -204,11 +218,7 @@ export default function AddressesPage() {
         <Page>
             <PageTopbar
                 eyebrow="Accounts"
-                subtitle={
-                    emailsData.emails
-                        ? `${stats.total} mailboxes`
-                        : "Loading…"
-                }
+                subtitle={countLabel}
             >
                 <TopbarAction
                     onClick={() => p?.setAddEmail(true)}
@@ -219,13 +229,13 @@ export default function AddressesPage() {
             </PageTopbar>
 
             <StatStrip cols={4}>
-                <Stat label="Total" value={<AnimatedNumber value={stats.total} />} sub="connected" />
+                <Stat label="Total" value={<AnimatedNumber value={totalCount} />} sub={listedCount === totalCount ? "connected" : `${listedCount} loaded`} />
                 <Stat label="Healthy" value={<AnimatedNumber value={stats.healthy} />} sub="sending now" accent={stats.healthy > 0} />
                 <Stat label="Warming" value={<AnimatedNumber value={stats.warming} />} sub="ramping up" />
                 <Stat label="Needs attention" value={<AnimatedNumber value={stats.issues} />} sub="paused or failing" last />
             </StatStrip>
 
-            <SectionBar label="Mailboxes" count={emailsData.emails?.length ?? 0}>
+            <SectionBar label="Mailboxes" count={totalCount}>
                 <SearchInput
                     value={query}
                     onChange={setQuery}
@@ -271,7 +281,7 @@ export default function AddressesPage() {
             <PageBody>
                 <WarmupCoverageNotice
                     warmupCount={warmupActive}
-                    totalCount={stats.total}
+                    totalCount={totalCount}
                     canWarmup={canWarmup}
                     onAdd={() => p?.setAddEmail(true)}
                 />
@@ -300,55 +310,69 @@ export default function AddressesPage() {
                         }
                     />
                 ) : (
-                    <table className="w-full text-left">
-                        <thead className="sticky top-0 bg-white z-[1]">
-                            <tr className="border-b border-slate-200">
-                                <th className="pl-5 pr-2 py-2 w-9">
-                                    <input
-                                        type="checkbox"
-                                        className="w-3.5 h-3.5 rounded accent-sky-600"
-                                        checked={isSelectedAll()}
-                                        onChange={() => {
-                                            if (isSelectedAll()) {
-                                                setSelected((bef) =>
-                                                    bef.filter((e) => !emailsData.emails.map((em) => em.id).includes(e)),
-                                                );
-                                            } else {
-                                                setSelected((bef) => [
-                                                    ...bef,
-                                                    ...emailsData.emails
-                                                        .filter((em) => !selected.includes(em.id))
-                                                        .map((em) => em.id),
-                                                ]);
-                                            }
-                                        }}
+                    <>
+                        <table className="w-full text-left">
+                            <thead className="sticky top-0 bg-white z-[1]">
+                                <tr className="border-b border-slate-200">
+                                    <th className="pl-5 pr-2 py-2 w-9">
+                                        <input
+                                            type="checkbox"
+                                            className="w-3.5 h-3.5 rounded accent-sky-600"
+                                            checked={isSelectedAll()}
+                                            onChange={() => {
+                                                if (isSelectedAll()) {
+                                                    setSelected((bef) =>
+                                                        bef.filter((e) => !emailsData.emails.map((em) => em.id).includes(e)),
+                                                    );
+                                                } else {
+                                                    setSelected((bef) => [
+                                                        ...bef,
+                                                        ...emailsData.emails
+                                                            .filter((em) => !selected.includes(em.id))
+                                                            .map((em) => em.id),
+                                                    ]);
+                                                }
+                                            }}
+                                        />
+                                    </th>
+                                    <th className="px-3 py-2 text-[10px] font-medium text-slate-400 uppercase tracking-[0.14em]">Account</th>
+                                    <th className="px-3 py-2 text-[10px] font-medium text-slate-400 uppercase tracking-[0.14em] w-24 text-right">Warmup</th>
+                                    <th className="px-3 py-2 text-[10px] font-medium text-slate-400 uppercase tracking-[0.14em] w-10 md:w-32"><span className="hidden md:inline">Health</span></th>
+                                    <th className="px-3 py-2 w-16"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {emailsData.emails.map((box) => (
+                                    <MailboxRow
+                                        key={box.id}
+                                        box={box}
+                                        tags={p?.user.tags ?? []}
+                                        status={statusById.get(box.id)}
+                                        canWarmup={canWarmup}
+                                        checked={selected.includes(box.id)}
+                                        onToggleSelect={() =>
+                                            selected.includes(box.id)
+                                                ? setSelected((bef) => bef.filter((i) => i !== box.id))
+                                                : setSelected((bef) => [...bef, box.id])
+                                        }
+                                        onOpen={openDetail}
                                     />
-                                </th>
-                                <th className="px-3 py-2 text-[10px] font-medium text-slate-400 uppercase tracking-[0.14em]">Account</th>
-                                <th className="px-3 py-2 text-[10px] font-medium text-slate-400 uppercase tracking-[0.14em] w-24 text-right">Warmup</th>
-                                <th className="px-3 py-2 text-[10px] font-medium text-slate-400 uppercase tracking-[0.14em] w-10 md:w-32"><span className="hidden md:inline">Health</span></th>
-                                <th className="px-3 py-2 w-16"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {emailsData.emails.map((box) => (
-                                <MailboxRow
-                                    key={box.id}
-                                    box={box}
-                                    tags={p?.user.tags ?? []}
-                                    status={statusById.get(box.id)}
-                                    canWarmup={canWarmup}
-                                    checked={selected.includes(box.id)}
-                                    onToggleSelect={() =>
-                                        selected.includes(box.id)
-                                            ? setSelected((bef) => bef.filter((i) => i !== box.id))
-                                            : setSelected((bef) => [...bef, box.id])
-                                    }
-                                    onOpen={openDetail}
-                                />
-                            ))}
-                        </tbody>
-                    </table>
+                                ))}
+                            </tbody>
+                        </table>
+                        {emailsData.hasNextPage && (
+                            <div className="flex items-center justify-center border-t border-slate-200/60 px-5 py-3">
+                                <button
+                                    type="button"
+                                    onClick={() => emailsData.fetchNextPage()}
+                                    disabled={emailsData.isFetchingNextPage}
+                                    className="h-8 rounded-md border border-slate-200 px-3 text-[12px] font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    {emailsData.isFetchingNextPage ? "Loading…" : `Load more (${listedCount} of ${totalCount})`}
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {selected.length > 0 && (
