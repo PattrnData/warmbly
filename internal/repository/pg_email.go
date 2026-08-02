@@ -1368,7 +1368,20 @@ func (r *emailRepository) GetOAuthCredentials(ctx context.Context, emailAccountI
 		return nil, errx.InternalError()
 	}
 
-	// Decrypt tokens
+	// App-only Graph mailboxes intentionally store no delegated OAuth tokens.
+	// Older app-only onboarding rows persisted the sentinel value directly in
+	// refresh_token and left access_token empty. Treat that shape as a valid
+	// app-only credential instead of trying to decrypt plaintext/sentinel fields.
+	if refreshToken == models.GraphAppOnlyRefreshToken {
+		return &OAuthCredentials{
+			AccessToken:  "",
+			RefreshToken: models.GraphAppOnlyRefreshToken,
+			ExpiresAt:    expiresAt,
+			AppOnly:      true,
+		}, nil
+	}
+
+	// Decrypt delegated tokens.
 	var xerr error
 	decryptedAccessToken, xerr := r.Encrypt.Decrypt(accessToken)
 	if xerr != nil {
