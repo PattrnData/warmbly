@@ -350,3 +350,366 @@ Initial caps and pauses:
 - No prospect recipients in warmup seed/partner scope.
 - Immediate pause/quarantine triggers: Graph auth/read failure, worker send failure, new DLQ, non-internal recipient evidence, Sent Items mismatch, storage/DEK failure, or any owner revocation.
 - Post-activation evidence must show exactly which rows changed, which messages were sent, where they were found in Graph, and that no cold/prospect campaign was touched.
+
+## Sarah and Colin conservative warmup policy - 2026-08-01
+
+This section is a policy/evidence update only. It does **not** approve, start, resume, or replay warmup.
+
+### Fresh read-only inventory
+
+Live host/path checked: `relay.pattrndata.io` backing repo `/home/hl-mailserver/projects/warmbly`.
+
+Service state observed before policy drafting:
+
+```text
+backend    running   healthy
+consumer   running
+mailpit    running   healthy
+nats       running   healthy
+postgres   running   healthy
+realtime   running   healthy
+redis      running   healthy
+tracking   running   healthy
+web        running
+worker     running
+```
+
+Relevant schema facts from the live database:
+
+```text
+email_accounts columns include: warmup, campaign_limit, min_wait_time, warmup_base, warmup_max, warmup_increase, warmup_reply_rate, warmup_pool_type, risk_band, auth_state
+warmup_pool_participants columns include: participant_role, blocked_at, blocked_until, spam_score, health_state, last_health_score, last_health_reason
+warmup_pool_participants has no per-participant daily_limit/status column; sender caps are account-level warmup fields plus scheduler policy.
+```
+
+Current Pattrn sender/account state:
+
+```text
+colin@pattrndata.co.uk|status=active|warmup=NULL|campaign_limit=50|min_wait=600|base=10|max=40|inc=1|reply_rate=30|pool_type=premium|risk=clean|auth=passing
+james@pattrndata.com|status=active|warmup=NULL|campaign_limit=50|min_wait=600|base=10|max=40|inc=1|reply_rate=30|pool_type=premium|risk=clean|auth=passing
+sarah@pattrndata.com|status=active|warmup=NULL|campaign_limit=50|min_wait=600|base=10|max=40|inc=1|reply_rate=30|pool_type=premium|risk=clean|auth=passing
+```
+
+Current warmup-pool state:
+
+```text
+colin@pattrndata.co.uk|pool=Premium warmup pool|role=recipient_only|blocked_at=NULL|blocked_until=NULL|health=healthy|score=0|spam=0
+james@pattrndata.com|pool=Premium warmup pool|role=recipient_only|blocked_at=NULL|blocked_until=NULL|health=healthy|score=0|spam=0
+sarah@pattrndata.com|pool=Premium warmup pool|role=recipient_only|blocked_at=NULL|blocked_until=NULL|health=healthy|score=0|spam=0
+active_warmup_tasks=0
+warmup_tasks_last7d=4
+campaign_tasks_today=4
+```
+
+Scheduler policy verified in source:
+
+- Active warmup normally starts from `warmup_base`, increases by `warmup_increase` per day, and caps at `warmup_max`.
+- Defaults are `base=10`, `increase=1`, `max=40`, but those defaults are not approved for the Sarah/Colin pilot.
+- If a mailbox backs a live campaign, warmup is clamped to at most `5` warmup sends/day.
+- Warmup volume is also capped by eligible recipient capacity, including recipient-only participants, so a small pool should not force repeated same-day sends to the same recipient.
+- `watch` and `throttled` health states reduce volume and widen spacing. `quarantined` and `blocked` participants are not eligible.
+
+### Activation stance for Sarah and Colin
+
+Owner correction: Sarah and Colin are intended outbound sender identities under the kiosk licence plus attached shared mailbox method. `recipient_only` with `warmup=NULL` is the current pre-activation safety state, not the target operating model.
+
+The next gate is therefore not "leave them recipient-only". The next gate is to graduate each mailbox through a controlled Warmbly-native internal sender proof, then enable outbound warmup/campaign sending in approved waves. Before either Sarah or Colin changes role or sends under warmup, the same operator window must prove:
+
+1. `backend`, `consumer`, `worker`, `postgres`, `redis`, `nats`, and `mailpit` are running, with health checks green where available.
+2. `active_warmup_tasks=0`, no retryable due warmup dead letters, and no unreviewed campaign DLQs that could be replayed by the same restart/operator action.
+3. The candidate account is still `active`, `auth=passing`, `risk=clean`, `participant_role=recipient_only`, `health=healthy`, `spam_score=0`, and `blocked_at/blocked_until=NULL` before the role change.
+4. Microsoft Graph read-only smoke succeeds for the candidate mailbox.
+5. The candidate completes a Warmbly-native internal proof triangle: Warmbly task/message-id, worker send-success log, and Microsoft Graph Sent Items readback for the same RFC `Message-ID`. Sarah currently has a prior proof mismatch to resolve; Colin needs his first proof triangle.
+6. Prospect/cold campaign send, contact import, CRM write, and Warmbly account expansion gates remain closed unless separately approved. LinkedIn is a separate outreach lane and is not part of this Warmbly cold-email setup.
+
+### Pilot caps for first activation wave
+
+Once the proof gate clears for a candidate and owner approval covers the operator window, start Sarah/Colin far below the product defaults, but treat this as an initial ramp, not the long-term capacity target of the kiosk/shared-mailbox method:
+
+| Mailbox | Initial outbound warmup cap | Increase | Early pilot ceiling | Minimum spacing | Notes |
+|---|---:|---:|---:|---:|---|
+| `sarah@pattrndata.com` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Resolve Sarah Sent Items / worker-log proof mismatch first, then graduate her to sender. |
+| `colin@pattrndata.co.uk` | `1/day` | `0/day` for the first 72 hours | `2/day` while the pool has only the current three Pattrn accounts | at least `3600s` | Run Colin's first Warmbly-native proof triangle, then graduate him to sender. |
+
+Implementation expectation for an approved activation: set account-level warmup fields to the pilot values in the same change that enables outbound warmup, rather than relying on existing defaults of `base=10`, `increase=1`, `max=40`, and `min_wait=600`.
+
+Do not move above `2/day/mailbox` until all of the following are true for at least 72 hours: no warmup DLQs, no worker send failures, no Graph read failures, no Sent Items mismatches, no non-internal recipients during proof, no spam placement/complaint signals, both candidate participants remain `healthy`, and owner approval explicitly authorizes the next step. The next step should still be capped at `3/day/mailbox`, then ramp toward the sender-fleet capacity model only after more mailbox identities and recipient capacity are added and verified.
+
+### Immediate stop / rollback conditions
+
+Pause the mailbox back to `warmup=NULL` and restore `participant_role=recipient_only` immediately if any of these appear:
+
+- any warmup task is addressed to a prospect, external cold lead, CRM contact, or non-approved recipient;
+- worker send-success correlation or Microsoft Graph Sent Items readback is missing for a pilot message;
+- candidate health changes away from `healthy`, spam score rises above `0`, or `blocked_at`/`blocked_until` becomes non-null;
+- Graph auth/read smoke fails for the candidate or its partner mailbox;
+- any warmup task dead-letters, retries unexpectedly, or exceeds the approved daily cap;
+- storage/DEK preflight fails;
+- campaign/cold outreach tasks restart unintentionally during the warmup operator window;
+- the owner revokes approval or the operator window ends without post-activation evidence.
+
+Gate conclusion: Sarah and Colin are currently safe as healthy pre-activation pool members. They are intended outbound sender identities for the kiosk licence plus attached shared mailbox method, but their live warmup/campaign graduation still needs the controlled internal proof triangle and explicit operator-window approval before prospect/cold outreach is opened.
+
+## Sarah and Colin smallest warmup-sender activation wave - 2026-08-01
+
+This section records the applied pilot warmup activation wave and post-activation readback from the live Warmbly host. It does not approve any prospect/cold campaign, CRM write, Warmbly account expansion, or DLQ replay. LinkedIn is a separate outreach lane and is not part of this Warmbly cold-email setup.
+
+### Scope applied
+
+- Mailboxes changed: `sarah@pattrndata.com`, `colin@pattrndata.co.uk`.
+- Pool role changed from `recipient_only` to `sender_receiver` for those two mailboxes only.
+- Warmup fields were set conservatively below product defaults: `warmup_base=1`, `warmup_max=2`, `warmup_increase=0`, `min_wait_time=3600`, `warmup_days=62`, `warmup_pool_type=premium`.
+- Exactly one local warmup task was seeded per activated mailbox, scheduled for the next weekday morning Europe/London: Sarah at `2026-08-03 07:13:00+00`, Colin at `2026-08-03 07:41:00+00`.
+- `james@pattrndata.com` remained `recipient_only` with `warmup=NULL`.
+
+### Post-activation live readback
+
+Service state observed: `backend`, `consumer`, `mailpit`, `nats`, `postgres`, `realtime`, `redis`, `tracking`, `web`, and `worker` were running; health checks were healthy where exposed.
+
+```text
+colin@pattrndata.co.uk | outlook | active | has_worker=true | warmup=2026-08-01 12:53:27.930142 | min_wait_time=3600 | warmup_base=1 | warmup_max=2 | warmup_increase=0 | warmup_days=62 | premium | clean | passing | sender_receiver | healthy | spam_score=0 | blocked_at=NULL
+james@pattrndata.com   | outlook | active | has_worker=true | warmup=NULL                       | min_wait_time=600  | warmup_base=10 | warmup_max=40 | warmup_increase=1 | warmup_days=0  | premium | clean | passing | recipient_only  | healthy | spam_score=0 | blocked_at=NULL
+sarah@pattrndata.com   | outlook | active | has_worker=true | warmup=2026-08-01 12:53:27.930142 | min_wait_time=3600 | warmup_base=1 | warmup_max=2 | warmup_increase=0 | warmup_days=62 | premium | clean | passing | sender_receiver | healthy | spam_score=0 | blocked_at=NULL
+```
+
+Seeded warmup task readback:
+
+```text
+sarah@pattrndata.com   | cf3d426e-21d5-4567-a8bb-63cd51641e01 | pending | 2026-08-03 07:13:00+00
+colin@pattrndata.co.uk | 1ee05408-2f01-462c-b491-9ebda8cbf32b | pending | 2026-08-03 07:41:00+00
+```
+
+Safety checks after activation:
+
+```text
+due_warmup_tasks_now=0
+completed_warmup_since_activation=0
+active_campaigns=0
+active_campaign_tasks=0
+due_pending_warmup_dlq=0
+campaigns_created_since_activation=0
+```
+
+Proof reply readback remains intact and paused:
+
+```text
+e200deaf-5fe5-4a3e-909b-095398d0441e | paused | sent_at=2026-08-01 11:40:05.277757+00 | replied_at=2026-08-01 11:40:24.718164+00 | reply_class=positive | source=lexicon | confidence=0.8
+f85e5019-3282-4ec5-872e-78f4539ff4f5 | paused | sent_at=2026-08-01 11:53:00.210856+00 | replied_at=2026-08-01 11:53:24.973414+00 | reply_class=positive | source=lexicon | confidence=0.8
+```
+
+LinkedIn/Unipile is separate from this Warmbly cold-email setup. The live Warmbly DB has no LinkedIn/Unipile tables (`tables matching linkedin/unipile = 0`), so LinkedIn should be tracked and approved in its own lane rather than on this Warmbly gate.
+
+### Gates and next expansion/account sorting plan
+
+- Open now: Sarah and Colin pilot warmup sender/receiver role at 1/day each, with first seeded sends not due until Monday morning UK time.
+- Still closed inside Warmbly cold email: prospect/cold campaign sends, imports, CRM writes, 12-legacy-user return, 13-kiosk expansion, DLQ replay, and cap increase above 2/day/mailbox. LinkedIn is separate and should not be bundled into this Warmbly gate.
+- Immediate monitoring completed early after owner approval to accelerate only the existing Sarah/Colin seeded tasks. See the acceleration proof below.
+- Next expansion/account sorting: keep James as recipient-only during the first Sarah/Colin pilot window; sort additional mailbox/account expansion only after 72 hours with no warmup DLQs, no Graph failures, no worker failures, no Sent Items mismatches, and owner approval for the next cap/account wave.
+
+## Sarah and Colin accelerated first warmup task proof - 2026-08-01
+
+Owner approved accelerating the warmup tasks in the Discord cold-email/outreach thread. The live change was scoped to the two already seeded Sarah/Colin warmup tasks only. No new campaign, prospect import, CRM write, LinkedIn/Unipile action, DLQ replay, cap increase, or mailbox expansion was opened.
+
+### Acceleration applied
+
+The existing pending pilot tasks were moved from Monday morning UTC to immediate staggered proof slots:
+
+```text
+sarah@pattrndata.com   | cf3d426e-21d5-4567-a8bb-63cd51641e01 | pending | 2026-08-01 13:32:49.244002+00
+colin@pattrndata.co.uk | 1ee05408-2f01-462c-b491-9ebda8cbf32b | pending | 2026-08-01 13:37:49.244002+00
+```
+
+### Warmbly task and worker-send proof
+
+Both accelerated warmup tasks completed cleanly, each with a persisted RFC `Message-ID` and worker send-success log:
+
+```text
+sarah@pattrndata.com   | cf3d426e-21d5-4567-a8bb-63cd51641e01 | completed | completed_at=2026-08-01 13:32:50.13132+00  | <c5170e7d-5e90-4278-a307-2703c6e55ac5@pattrndata.com>
+colin@pattrndata.co.uk | 1ee05408-2f01-462c-b491-9ebda8cbf32b | completed | completed_at=2026-08-01 13:37:50.117139+00 | <4d37d7d8-acbc-45bb-959f-ecbf277eaadb@pattrndata.co.uk>
+```
+
+Worker logs showed the exact task IDs, warmup flag, recipient, and send-success message IDs:
+
+```text
+cf3d426e-21d5-4567-a8bb-63cd51641e01 | to=[james@pattrndata.com] | is_warmup=true | Email sent successfully | <c5170e7d-5e90-4278-a307-2703c6e55ac5@pattrndata.com>
+1ee05408-2f01-462c-b491-9ebda8cbf32b | to=[james@pattrndata.com] | is_warmup=true | Email sent successfully | <4d37d7d8-acbc-45bb-959f-ecbf277eaadb@pattrndata.co.uk>
+```
+
+### Microsoft Graph Sent Items proof
+
+Microsoft Graph app-only Sent Items readback found one exact `internetMessageId` match per sender:
+
+```text
+sarah@pattrndata.com   | sentitems_matches=1 | sentDateTime=2026-08-01T13:32:50Z | subject="today heads up" | to=[james@pattrndata.com]
+colin@pattrndata.co.uk | sentitems_matches=1 | sentDateTime=2026-08-01T13:37:50Z | subject="Just a thought" | to=[james@pattrndata.com]
+```
+
+Daily warmup stats now show `emails_sent=1`, `emails_replied=0` for each activated mailbox on `2026-08-01`.
+
+### Safety and next tasks after acceleration
+
+Post-proof safety readback:
+
+```text
+active_campaigns=0
+campaigns_created_since_activation=0
+failed_warmup_since_acceleration=0
+warmup_dlq_due_now=0
+linkedin_unipile_tables=0
+```
+
+Warmbly created the next pending warmup task for each sender, both scheduled for Monday morning UTC:
+
+```text
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-03 07:53:47+00
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-03 07:54:09+00
+```
+
+Current gate conclusion: the first Sarah/Colin warmup proof triangle is complete for both mailboxes. Keep prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, expansion beyond the current approved mailbox set, and cap increases closed until a clean observation window and explicit owner approval.
+
+## James current-three warmup sender expansion - 2026-08-01
+
+Owner clarified that provider-type generality is not in scope. The desired scope is the current three Pattrn Microsoft 365 shared-mailbox accounts for the 14-kiosk plus attached shared-mailbox setup. James was therefore expanded from `recipient_only` to the same conservative outbound warmup sender policy as Sarah and Colin. This did not approve prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, mailbox expansion beyond the current three, or cap increases.
+
+### Preflight
+
+Before changing James, live readback showed:
+
+```text
+sarah@pattrndata.com   | sender_receiver | active | has_worker=true | clean | passing | healthy | spam_score=0
+colin@pattrndata.co.uk | sender_receiver | active | has_worker=true | clean | passing | healthy | spam_score=0
+james@pattrndata.com   | recipient_only  | active | has_worker=true | clean | passing | healthy | spam_score=0 | warmup=NULL
+```
+
+Safety checks before activation:
+
+```text
+active_campaigns=0
+campaign_tasks_pending_active=0
+due_pending_warmup_tasks=0
+james_pending_active_warmup_tasks=0
+warmup_dlq_due_now=0
+linkedin_unipile_tables=0
+```
+
+Microsoft Graph app-only read smoke passed for all three current mailboxes: Sarah, Colin, and James.
+
+### Scope applied
+
+James was changed to match the same conservative pilot warmup policy already applied to Sarah and Colin:
+
+```text
+james@pattrndata.com | warmup=2026-08-01 14:26:48.102817 | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | sender_receiver | healthy | spam_score=0
+```
+
+Exactly one pending local warmup task was seeded for James for the next weekday morning UTC:
+
+```text
+james@pattrndata.com | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-03 07:25:00+00
+```
+
+### Current three-account readback after James expansion
+
+All current three Pattrn M365 shared-mailbox accounts are now active warmup sender/receivers under the conservative cap:
+
+```text
+colin@pattrndata.co.uk | sender_receiver | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | healthy | spam_score=0
+james@pattrndata.com   | sender_receiver | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | healthy | spam_score=0
+sarah@pattrndata.com   | sender_receiver | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | healthy | spam_score=0
+```
+
+Pending warmup tasks for the current three:
+
+```text
+james@pattrndata.com   | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-03 07:25:00+00
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-03 07:53:47+00
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-03 07:54:09+00
+```
+
+Post-change safety readback:
+
+```text
+current_3_sender_receiver=3
+current_3_conservative_caps=3
+active_campaigns=0
+campaign_tasks_pending_active=0
+due_pending_warmup_tasks=0
+warmup_dlq_due_now=0
+linkedin_unipile_tables=0
+```
+
+Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for conservative Warmbly warmup. Sarah and Colin have completed the first proof triangle. James has been activated and has a first warmup task scheduled for Monday morning UTC. Keep prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, additional mailbox expansion, and cap increases closed until James' first task proof and the clean observation window pass.
+
+## Weekend-enabled conservative warmup correction - 2026-08-01
+
+Owner clarified the best-practice scope: campaigns remain weekday-only, but mailbox warmup should run Monday through Sunday under conservative caps. The live configuration was corrected for the current three Pattrn Microsoft 365 shared-mailbox warmup senders only. This did not approve prospect/cold campaign sends, imports, CRM writes, LinkedIn/Unipile actions, DLQ replay, mailbox expansion beyond the current three, or cap increases.
+
+Pre-change readback showed the current three were still weekday-only:
+
+```text
+colin@pattrndata.co.uk | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | passing | clean
+james@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | passing | clean
+sarah@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=62 | premium | passing | clean
+```
+
+The account-level conservative setup was corrected to `warmup_days=127` for all three while preserving the conservative caps and weekday campaign boundary:
+
+```text
+colin@pattrndata.co.uk | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+james@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+sarah@pattrndata.com   | warmup_base=1 | warmup_max=2 | warmup_increase=0 | min_wait_time=3600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+```
+
+Because the local task provider reads `tasks.scheduled_at` from the database (`local:<task_id>` handles), the existing one-pending-task-per-mailbox warmup tasks were moved from Monday morning to Sunday morning UTC rather than waiting until Monday:
+
+```text
+james@pattrndata.com   | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-02 07:25:00+00 | local:ec8a732c-e155-4e7a-ad65-e2ef314098ca
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-02 07:47:00+00 | local:1b140a17-57d2-4cc6-8a5c-b741bc79a452
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-02 08:13:00+00 | local:7c159e91-068b-483e-b087-35f99a6bdf53
+```
+
+Post-change safety readback remained clean:
+
+```text
+active_campaigns=0
+campaign_tasks_pending_active=0
+warmup_dlq_due_now=0
+due_pending_warmup_tasks=0
+```
+
+Follow-up proof cron jobs were moved from Monday to Sunday after the new first-task window: Sarah/Colin at `2026-08-02 10:00 UTC`, James at `2026-08-02 10:15 UTC`.
+
+Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for conservative Monday-Sunday Warmbly warmup. Campaign sending remains weekday-only and all outbound prospect/cold campaign gates remain closed pending proof and explicit approval.
+
+## Classic SaaS warmup ramp correction - 2026-08-01
+
+Owner corrected the previous ultra-conservative cap assumption: Pattrn wants a classic warmup SaaS ramp for the current shared-mailbox warmup senders. Campaigns remain separately gated and weekday-only, but warmup should follow the standard SaaS-style ramp.
+
+The current three Pattrn Microsoft 365 shared-mailbox accounts were updated from proof-only caps to classic warmup caps:
+
+```text
+colin@pattrndata.co.uk | warmup_base=10 | warmup_max=40 | warmup_increase=2 | min_wait_time=600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+james@pattrndata.com   | warmup_base=10 | warmup_max=40 | warmup_increase=2 | min_wait_time=600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+sarah@pattrndata.com   | warmup_base=10 | warmup_max=40 | warmup_increase=2 | min_wait_time=600 | warmup_days=127 | 08:00-20:00 | premium | passing | clean
+```
+
+Existing pending first warmup tasks were left in place so the local provider keeps the one-pending-task-per-mailbox chain:
+
+```text
+james@pattrndata.com   | ec8a732c-e155-4e7a-ad65-e2ef314098ca | pending | 2026-08-02 07:25:00+00 | local:ec8a732c-e155-4e7a-ad65-e2ef314098ca
+colin@pattrndata.co.uk | 1b140a17-57d2-4cc6-8a5c-b741bc79a452 | pending | 2026-08-02 07:47:00+00 | local:1b140a17-57d2-4cc6-8a5c-b741bc79a452
+sarah@pattrndata.com   | 7c159e91-068b-483e-b087-35f99a6bdf53 | pending | 2026-08-02 08:13:00+00 | local:7c159e91-068b-483e-b087-35f99a6bdf53
+```
+
+Post-change safety readback remained clean:
+
+```text
+active_campaigns=0
+campaign_tasks_pending_active=0
+warmup_dlq_due_now=0
+due_pending_warmup_tasks=0
+```
+
+Operational note: with `warmup_base=10`, `warmup_increase=2`, and `warmup_max=40`, the scheduler will target roughly 10 warmup emails per mailbox per day at start, then ramp by 2/day until capped at 40/day, subject to eligible recipient capacity, health throttles, business window, jitter, partner diversity, and one-pending-task chaining.
+
+Current gate conclusion: the current three Pattrn Microsoft 365 shared-mailbox accounts are configured for classic SaaS-style Monday-Sunday Warmbly warmup. Prospect/cold campaigns remain separate and closed pending explicit approval.

@@ -34,12 +34,14 @@ func (w *JobsService) InitEvents() {
 	Register(w, models.JobEventTypeHistoryIDUpdate, w.HandleHistoryIDUpdate)
 	Register(w, models.JobEventTypeGraphDeltaUpdate, w.HandleGraphDeltaUpdate)
 	Register(w, models.JobEventTypeTokenUpdate, w.HandleTokenUpdate)
+	Register(w, models.JobEventTypeEmailSent, w.HandleEmailSent)
+	Register(w, models.JobEventTypeEmailFailed, w.HandleEmailFailed)
 
 	// Email error handlers
-	Register(w, models.JobEventTypeEmailAuthError, w.HandleEmailAuthError)
-	Register(w, models.JobEventTypeEmailDisabled, w.HandleEmailDisabled)
-	Register(w, models.JobEventTypeEmailRateLimited, w.HandleEmailRateLimited)
-	Register(w, models.JobEventTypeEmailServerError, w.HandleEmailServerError)
+	RegisterEmailError(w, models.JobEventTypeEmailAuthError, w.HandleEmailAuthError)
+	RegisterEmailError(w, models.JobEventTypeEmailDisabled, w.HandleEmailDisabled)
+	RegisterEmailError(w, models.JobEventTypeEmailRateLimited, w.HandleEmailRateLimited)
+	RegisterEmailError(w, models.JobEventTypeEmailServerError, w.HandleEmailServerError)
 
 	// Per-worker telemetry. Driver for worker_capacity_view.
 	Register(w, models.JobEventTypeWorkerHealth, w.HandleWorkerHealth)

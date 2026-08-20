@@ -371,6 +371,7 @@ func main() {
 		WarmupEngagementRepo:        repository.NewWarmupEngagementRepository(primaryDB.Pool),
 		WarmupService:               warmupService,
 		WorkerRepo:                  workerRepo,
+		TaskResultRepository:        taskRepo,
 		Publisher:                   eventsPublisher,
 		StreamingPublisher:          streamingPublisher,
 		AdvancedService:             advancedService,
