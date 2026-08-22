@@ -364,6 +364,7 @@ func main() {
 		EmailHistoryIDRepository:    emailHistoryIDRepo,
 		EmailGraphDeltaRepository:   emailGraphDeltaRepo,
 		EmailAccountErrorRepository: emailAccountErrorRepo,
+		TaskRepository:              taskRepo,
 		WarmupRepo:                  warmupRepo,
 		WarmupContentRepo:           repository.NewWarmupContentRepository(primaryDB.Pool),
 		WarmupEngagementRepo:        repository.NewWarmupEngagementRepository(primaryDB.Pool),

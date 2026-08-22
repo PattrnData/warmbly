@@ -680,6 +680,30 @@ func cleanMessageID(mid string) string {
 	return strings.TrimSpace(strings.Trim(mid, "<>"))
 }
 
+func (s *service) getTaskByMessageIDVariants(ctx context.Context, messageID string) (*repository.Task, error) {
+	if s.taskRepo == nil {
+		return nil, nil
+	}
+	trimmed := strings.TrimSpace(messageID)
+	bare := cleanMessageID(messageID)
+	if bare == "" {
+		return nil, nil
+	}
+	variants := []string{trimmed, bare, "<" + bare + ">"}
+	seen := map[string]bool{}
+	for _, candidate := range variants {
+		if candidate == "" || seen[candidate] {
+			continue
+		}
+		seen[candidate] = true
+		task, err := s.taskRepo.GetTaskByMessageID(ctx, candidate)
+		if err != nil || task != nil {
+			return task, err
+		}
+	}
+	return nil, nil
+}
+
 // buildReplyHeaders synthesizes the header map the reply classifier's Layer 1
 // (header) scan reads. EmailMessageStoreData does not carry the full raw header
 // block, but it does carry the structured fields the deterministic markers care
@@ -825,14 +849,22 @@ func (s *service) ProcessIncomingReply(ctx context.Context, emailAccountID uuid.
 	var contactID *uuid.UUID
 	var taskID *uuid.UUID
 
-	// First, try exact message threading via In-Reply-To.
+	// First, try exact message threading via In-Reply-To. Warmup replies must
+	// never create CRM follow-up tasks or campaign reply intent rows; they are
+	// synthetic mailbox-health traffic, not prospect replies.
 	for _, mid := range msg.InReplyTo {
 		candidate := cleanMessageID(mid)
 		if candidate == "" {
 			continue
 		}
-		task, err := s.taskRepo.GetTaskByMessageID(ctx, candidate)
-		if err != nil || task == nil || task.TaskType != "campaign" {
+		task, err := s.getTaskByMessageIDVariants(ctx, candidate)
+		if err != nil || task == nil {
+			continue
+		}
+		if task.TaskType == "warmup" {
+			return nil
+		}
+		if task.TaskType != "campaign" {
 			continue
 		}
 		taskID = &task.ID
