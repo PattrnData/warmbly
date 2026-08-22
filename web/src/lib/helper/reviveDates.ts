@@ -11,7 +11,10 @@ export default function reviveDates<T>(obj: T): T {
 
     if (typeof obj === "object") {
         const entries = Object.entries(obj as Record<string, unknown>).map(
-            ([key, value]) => [key, reviveDates(value)]
+            ([key, value]) => {
+                if (key === "custom_fields") return [key, value]
+                return [key, reviveDates(value)]
+            },
         )
         return Object.fromEntries(entries) as T
     }
