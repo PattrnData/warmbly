@@ -770,6 +770,7 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 		         WHERE rp.campaign_id = $1 AND rp.contact_id = cl.contact_id AND rp.replied_at IS NOT NULL
 		       ) AS has_replied
 		FROM campaign_leads cl
+		JOIN campaigns camp0 ON camp0.id = cl.campaign_id
 		JOIN contacts c ON c.id = cl.contact_id
 		LEFT JOIN LATERAL (
 			SELECT sequence_id, sent_at, opened_at, clicked_at, replied_at, reply_class, ai_label
@@ -783,6 +784,8 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 			WHERE p2.campaign_id = $1 AND p2.contact_id = cl.contact_id AND p2.sent_at IS NOT NULL
 		) ss ON true
 		WHERE cl.campaign_id = $1
+		  AND c.verification_status <> 'invalid'
+		  AND (camp0.risky_emails OR c.verification_status <> 'risky')
 		  AND NOT EXISTS (
 		    SELECT 1 FROM campaign_contact_progress b
 		    WHERE b.contact_id = cl.contact_id AND b.bounced_at IS NOT NULL
