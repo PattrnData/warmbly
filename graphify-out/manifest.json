@@ -2975,7 +2975,7 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_remove_email.go": {
-    "mtime": 1787560312.9801939,
+    "mtime": 1787561349.9904325,
     "ast_hash": "6a9811490fb905760cb1a2f92e94dd4a",
     "semantic_hash": ""
   },
@@ -2990,8 +2990,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_update_email.go": {
-    "mtime": 1785394382.6625352,
-    "ast_hash": "381748166ae7a54f1d97d4b324bdbab1",
+    "mtime": 1787561452.24244,
+    "ast_hash": "a4aa3c188f988ece8e9d505d41716e05",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_worker_health.go": {
@@ -6185,7 +6185,7 @@
     "semantic_hash": ""
   },
   "internal/repository/pg_email_error.go": {
-    "mtime": 1787560312.9801939,
+    "mtime": 1787561349.9904325,
     "ast_hash": "924325ecf4ba111f7f0e1b21612bb3ef",
     "semantic_hash": ""
   },
@@ -14480,7 +14480,7 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_remove_email_test.go": {
-    "mtime": 1787560474.7756963,
+    "mtime": 1787561349.9904325,
     "ast_hash": "53d13a760657c7ba1fe98646339d14f3",
     "semantic_hash": ""
   }
