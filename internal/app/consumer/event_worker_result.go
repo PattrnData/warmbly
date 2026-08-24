@@ -9,12 +9,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/repository"
 )
 
 // TaskResultRepository is the narrow task-write seam needed to acknowledge
 // worker result events from jobs.worker-events. Keeping this small avoids
 // coupling the worker-event consumer to the full task repository surface.
 type TaskResultRepository interface {
+	GetTask(ctx context.Context, taskID uuid.UUID) (*repository.Task, error)
 	UpdateTaskStatus(ctx context.Context, taskID uuid.UUID, status string) error
 	UpdateTaskMessageID(ctx context.Context, taskID uuid.UUID, messageID string) error
 	RecordTaskFailure(ctx context.Context, taskID uuid.UUID, title, message string) error
@@ -103,7 +105,27 @@ func (s *JobsService) HandleEmailSent(ctx context.Context, result models.SendEma
 			return err
 		}
 	}
-	return s.TaskResultRepository.UpdateTaskStatus(ctx, result.TaskID, "completed")
+	if err := s.TaskResultRepository.UpdateTaskStatus(ctx, result.TaskID, "completed"); err != nil {
+		return err
+	}
+	s.resolveRetryErrorsAfterSend(ctx, result.TaskID)
+	return nil
+}
+
+func (s *JobsService) resolveRetryErrorsAfterSend(ctx context.Context, taskID uuid.UUID) {
+	if s.EmailAccountErrorRepository == nil || s.TaskResultRepository == nil {
+		return
+	}
+	task, err := s.TaskResultRepository.GetTask(ctx, taskID)
+	if err != nil || task == nil || task.EmailAccountID == uuid.Nil {
+		if err != nil {
+			log.Warn().Err(err).Str("task_id", taskID.String()).Msg("could not resolve retry mailbox errors after send")
+		}
+		return
+	}
+	if xerr := s.EmailAccountErrorRepository.ResolveByMethod(ctx, task.EmailAccountID, "RETRY"); xerr != nil {
+		log.Warn().Str("error", xerr.Message).Str("email_account_id", task.EmailAccountID.String()).Msg("could not resolve retry mailbox errors after send")
+	}
 }
 
 func (s *JobsService) HandleEmailFailed(ctx context.Context, result models.SendEmailResult) error {

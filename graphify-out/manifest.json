@@ -2935,8 +2935,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_email_error.go": {
-    "mtime": 1785394382.660535,
-    "ast_hash": "1d4333d958cb2bb13c5f1ce8fe29cffb",
+    "mtime": 1787562309.4586267,
+    "ast_hash": "56c2038eddea2624f5ec6b9a4b58f204",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_flags_update.go": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/events.go": {
-    "mtime": 1785510759.8703077,
-    "ast_hash": "5cf431f6f909115aabaf7666725bdf13",
+    "mtime": 1787561712.1099977,
+    "ast_hash": "fc97bdb26a4d346604beaf7bb1e76800",
     "semantic_hash": ""
   },
   "internal/app/consumer/open_class.go": {
@@ -14455,13 +14455,13 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_worker_result.go": {
-    "mtime": 1785510842.5418675,
-    "ast_hash": "e93dfd189e5f1972447db504cf790f8b",
+    "mtime": 1787562309.4586267,
+    "ast_hash": "4ac6bfbc50d63a3cc307cc294bec5922",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_worker_result_test.go": {
-    "mtime": 1785510878.6346753,
-    "ast_hash": "390e798acf7fe9ed75f571a90ad78400",
+    "mtime": 1787562309.5716257,
+    "ast_hash": "b8caf086ff5901593450c1718f61f36e",
     "semantic_hash": ""
   },
   "internal/app/replyclassify/priority_matrix_test.go": {
