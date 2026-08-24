@@ -64,8 +64,17 @@ func NewEmailAccountErrorRepository(database *db.DB) EmailAccountErrorRepository
 	}
 }
 
-// Create stores a new email account error
+// Create stores a new email account error. Repeated transient worker failures
+// should not create an ever-growing stack of identical unresolved dashboard
+// warnings; keep one active row per account/error_code and return it until the
+// underlying issue is resolved.
 func (r *emailAccountErrorRepository) Create(ctx context.Context, data *CreateEmailAccountError) (*EmailAccountError, *errx.Error) {
+	if existing, xerr := r.GetUnresolvedByCode(ctx, data.EmailAccountID, data.ErrorCode); xerr != nil {
+		return nil, xerr
+	} else if existing != nil {
+		return existing, nil
+	}
+
 	query := `
 		INSERT INTO email_account_errors (
 			email_account_id, user_id, error_code, severity, resolve_method,
