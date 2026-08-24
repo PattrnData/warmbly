@@ -2975,8 +2975,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_remove_email.go": {
-    "mtime": 1785394382.6625352,
-    "ast_hash": "aba6592783eb63b80019bf5d2da280f2",
+    "mtime": 1787560312.9801939,
+    "ast_hash": "6a9811490fb905760cb1a2f92e94dd4a",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_token_update.go": {
@@ -6185,8 +6185,8 @@
     "semantic_hash": ""
   },
   "internal/repository/pg_email_error.go": {
-    "mtime": 1785394382.7305348,
-    "ast_hash": "82dbc5c14316e083e4c94d936b16622f",
+    "mtime": 1787560312.9801939,
+    "ast_hash": "924325ecf4ba111f7f0e1b21612bb3ef",
     "semantic_hash": ""
   },
   "internal/repository/pg_email_message_map.go": {
@@ -13310,8 +13310,8 @@
     "semantic_hash": ""
   },
   "web/src/lib/helper/reviveDates.ts": {
-    "mtime": 1785394382.941533,
-    "ast_hash": "84b3e0e818d02b4effe096c01663f28f",
+    "mtime": 1787234435.5672448,
+    "ast_hash": "cd5e1cd13a385c2d80f9349c9393fcf8",
     "semantic_hash": ""
   },
   "web/src/lib/helper/serializeDates.ts": {
@@ -14470,13 +14470,18 @@
     "semantic_hash": ""
   },
   "docs/pattrn-warmbly-mailbox-expansion-plan-2026-08-01.md": {
-    "mtime": 1785616377.5769963,
-    "ast_hash": "cd8117ed335817620f783dca10a4adc9",
+    "mtime": 1785619337.0833697,
+    "ast_hash": "f80a7b513a37b67231cbe4598a8ba51f",
     "semantic_hash": ""
   },
   "docs/pattrn-warmbly-james-kiosk-setup-evidence-2026-08-01.md": {
     "mtime": 1785613573.555676,
     "ast_hash": "d4d9b92100da841ba5c6f68cf6d7b5af",
+    "semantic_hash": ""
+  },
+  "internal/app/consumer/event_remove_email_test.go": {
+    "mtime": 1787560474.7756963,
+    "ast_hash": "53d13a760657c7ba1fe98646339d14f3",
     "semantic_hash": ""
   }
 }
