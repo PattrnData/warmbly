@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -72,6 +73,9 @@ func RegisterNewEmail(w *JobsService) {
 		if err != nil {
 			return err
 		}
+		if e == nil {
+			return nil
+		}
 		return w.HandleNewEmail(ctx, e)
 	}
 }
@@ -108,6 +112,12 @@ func (w *JobsService) normalizeNewEmailEvent(ctx context.Context, body any) (*mo
 	}
 	account, repoErr := w.EmailRepository.GetByID(ctx, msg.EmailID)
 	if repoErr != nil {
+		// Ack stale legacy NEW_EMAIL events for mailboxes that have since been
+		// deleted/unassigned. Re-delivery cannot make the mailbox reappear and just
+		// floods worker-events with "email not found" errors.
+		if strings.Contains(strings.ToLower(repoErr.Error()), "email not found") {
+			return nil, nil
+		}
 		return nil, repoErr
 	}
 	if account == nil {
