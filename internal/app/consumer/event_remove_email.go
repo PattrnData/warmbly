@@ -2,10 +2,14 @@ package jobs
 
 import (
 	"context"
+	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
 	"github.com/warmbly/warmbly/internal/models"
 )
+
+const warmupDeletionTamperingGrace = 2 * time.Hour
 
 // HandleRemoveEmail processes a message removal observed during mailbox sync.
 //
@@ -18,9 +22,17 @@ import (
 func (s *JobsService) HandleRemoveEmail(ctx context.Context, e *models.JobEventRemoveEmail) error {
 	if s.WarmupRepo != nil {
 		if rec, _ := s.WarmupRepo.GetWarmupReceived(ctx, e.EmailID, e.ID); rec != nil {
-			if s.WarmupService != nil {
-				health, _ := s.WarmupService.RecordTampering(ctx, e.EmailID, rec.MessageID, "deletion")
-				s.markRiskBandFromWarmupHealth(ctx, e.EmailID, health)
+			if shouldRecordWarmupDeletionTampering(rec.CreatedAt, time.Now()) {
+				if s.WarmupService != nil {
+					health, _ := s.WarmupService.RecordTampering(ctx, e.EmailID, rec.MessageID, "deletion")
+					s.markRiskBandFromWarmupHealth(ctx, e.EmailID, health)
+				}
+			} else {
+				log.Info().
+					Str("email_id", e.EmailID.String()).
+					Str("message_id", rec.MessageID).
+					Dur("age", time.Since(rec.CreatedAt)).
+					Msg("Skipping warmup deletion tampering: recent provider removal is expected after Warmbly folder move")
 			}
 		}
 	}
@@ -44,4 +56,14 @@ func (s *JobsService) HandleRemoveEmail(ctx context.Context, e *models.JobEventR
 		})
 	}
 	return nil
+}
+
+func shouldRecordWarmupDeletionTampering(receivedAt, now time.Time) bool {
+	if receivedAt.IsZero() {
+		return true
+	}
+	if now.Before(receivedAt) {
+		return false
+	}
+	return now.Sub(receivedAt) > warmupDeletionTamperingGrace
 }
