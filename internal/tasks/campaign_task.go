@@ -727,15 +727,10 @@ func (s *tasksService) HandleCampaignTask(task *proto.ProcessTask) *errx.Error {
 	// STEP 19: Publish events to Kafka
 	s.publishEmailSentEvent(ctx, taskRecord, account, campaign, contact, sequence)
 
-	// STEP 20: Create next campaign task
-	scheduledNext := nextTime
-	if s.advanced != nil && campaign.OrganizationID != nil {
-		if optimized, xerr := s.advanced.OptimizeSendTime(ctx, *campaign.OrganizationID, contact, nextTime); xerr == nil {
-			scheduledNext = optimized
-		}
-	}
-
-	if err := s.createCampaignTask(ctx, campaign.ID, account.ID, scheduledNext); err != nil {
+	// STEP 20: Create the next scheduler tick from the scheduler's own pacing.
+	// The advanced optimizer snaps to coarse clock hours and is for send-time UX,
+	// not campaign placeholder cadence.
+	if err := s.createCampaignTask(ctx, campaign.ID, account.ID, nextTime); err != nil {
 		// Log but don't fail the current task
 		log.Warn().Err(err).Str("campaign_id", campaign.ID.String()).Str("task_id", taskID.String()).Msg("Failed to create next campaign task")
 	}
