@@ -30,3 +30,10 @@ var (
 	// task only (the next invocation re-evaluates selection from scratch).
 	ErrCampaignDeferred = errors.New("campaign send deferred - no eligible mailbox for this contact right now")
 )
+
+func campaignPoolUnavailable(accountCount int) error {
+	if accountCount == 0 {
+		return ErrNoEmailAccounts
+	}
+	return ErrCampaignDeferred
+}
