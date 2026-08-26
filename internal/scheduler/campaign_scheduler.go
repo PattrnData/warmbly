@@ -87,7 +87,7 @@ func (s *schedulerService) CalculateNextCampaignTime(ctx context.Context, campai
 	}
 
 	if len(accounts) == 0 {
-		return time.Time{}, nil, uuid.Nil, ErrNoEmailAccounts
+		return time.Time{}, nil, uuid.Nil, campaignPoolUnavailable(0)
 	}
 
 	// STEP 3: Get campaign progress - find next contact/sequence to send.
@@ -319,6 +319,10 @@ func (s *schedulerService) CalculateNextCampaignTime(ctx context.Context, campai
 			cand.SenderLastSentAt = meta.lastSentAt
 		}
 		candidates = append(candidates, cand)
+	}
+
+	if len(candidates) == 0 {
+		return s.deferToNextDay(campaign), nil, accounts[0].ID, campaignPoolUnavailable(len(accounts))
 	}
 
 	// STEP 8.25: Apply ESP matching to the under-budget candidate set.
