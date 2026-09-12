@@ -212,12 +212,13 @@ func (r *contactRepository) Add(ctx context.Context, userID string, orgID uuid.U
 	for _, lead := range normalized {
 		insertBatch.Queue(
 			`INSERT INTO contacts (
-			 id, user_id, organization_id, first_name, last_name, email, company, phone, custom_fields
+			 id, user_id, organization_id, first_name, last_name, email, company, phone, custom_fields, verification_status
 			 ) VALUES (
-			  gen_random_uuid(), $1, $2, $3, $4, LOWER($5), $6, $7, $8
+			  gen_random_uuid(), $1, $2, $3, $4, LOWER($5), $6, $7, $8, 'unknown'
 			 )
 			 ON CONFLICT (user_id, (LOWER(email))) DO UPDATE SET
 			  organization_id = COALESCE(contacts.organization_id, EXCLUDED.organization_id),
+			  verification_status = COALESCE(contacts.verification_status, 'unknown'),
 			  first_name = EXCLUDED.first_name,
 			  last_name = EXCLUDED.last_name,
 			  company = EXCLUDED.company,

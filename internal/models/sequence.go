@@ -265,6 +265,7 @@ type BranchCondition struct {
 	//   "reply_wrong_person" — reply_class is wrong_person
 	//   "reply_bad_timing"   — reply_class is bad_timing
 	//   "reply_referral"     — reply_class is referral
+	//   "reply_unsubscribe"  — reply_class is unsubscribe
 	//   "reply_automated"    — reply_class is auto_reply OR out_of_office
 	// IMPORTANT: the plain "replied"/"not_replied" fields IGNORE automated
 	// replies (auto_reply / out_of_office) — only a human reply sets replied_at,

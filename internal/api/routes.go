@@ -357,6 +357,7 @@ func Run(
 			{
 				campaigns.GET("", m.RequireAccess(models.PermViewCampaigns, models.APIPermReadCampaigns), h.SearchCampaigns)
 				campaigns.POST("", m.RequireAccess(models.PermManageCampaigns, models.APIPermWriteCampaigns), h.CreateCampaign)
+				campaigns.GET("/:id/queue-diagnostics", m.RequireOrganization(), m.RequireAccess(models.PermViewCampaigns, models.APIPermReadCampaigns), h.GetCampaignQueueDiagnostics)
 				campaigns.GET("/:id", m.RequireAccess(models.PermViewCampaigns, models.APIPermReadCampaigns), h.GetCampaign)
 				campaigns.PATCH("/:id", m.RequireAccess(models.PermManageCampaigns, models.APIPermWriteCampaigns), h.UpdateCampaign)
 				campaigns.DELETE("/:id", m.RequireAccess(models.PermManageCampaigns, models.APIPermWriteCampaigns), h.DeleteCampaign)

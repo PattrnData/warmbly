@@ -38,6 +38,7 @@ type CampaignRepository interface {
 	// ("draft" | "active" | "paused" | "completed"; paused matches every
 	// paused_* variant; empty means all).
 	Search(ctx context.Context, userID, query string, cursor, folder *string, status string, limit int32) (*models.CampaignsResult, error)
+	QueueDiagnostics(ctx context.Context, orgID uuid.UUID, campaignID uuid.UUID) (*models.CampaignQueueDiagnostics, error)
 	// Overview returns status-bucket counts plus per-folder totals for the
 	// campaigns browser sidebar.
 	Overview(ctx context.Context, orgID string) (*models.CampaignsOverview, error)
@@ -51,6 +52,7 @@ type CampaignRepository interface {
 	StartCampaign(ctx context.Context, campaignID uuid.UUID) error
 	StopCampaign(ctx context.Context, campaignID uuid.UUID) error
 	ValidateCampaignReady(ctx context.Context, campaignID uuid.UUID) error
+	HasQueuedSendableLeads(ctx context.Context, campaignID uuid.UUID) (bool, error)
 	GetPendingCampaignTasks(ctx context.Context, campaignID uuid.UUID) ([]Task, error)
 	// ListCampaignScheduleCandidates returns active campaigns that have NO pending
 	// task — their self-perpetuating chain died and needs re-seeding. Used by the
@@ -178,6 +180,80 @@ func getCampaignFull(rows db.Scannable, campaign *models.Campaign) error {
 // sender pool, initial sequences, A/B variants, advanced overrides). The
 // previous version omitted updated_at/created_at which are NOT NULL and have
 // no DEFAULT, so any call returned a 500.
+type standardReplyActionNode struct {
+	name  string
+	field string
+	cfg   models.ActionConfig
+}
+
+func standardReplyActionNodes() []standardReplyActionNode {
+	return []standardReplyActionNode{
+		{name: "Reply: unsubscribe", field: "reply_unsubscribe", cfg: models.ActionConfig{Type: "unsubscribe"}},
+		{name: "Reply: positive", field: "reply_positive", cfg: models.ActionConfig{Type: "create_task", TaskTitle: "Positive campaign reply: {{first_name}} {{last_name}}", TaskType: "email", TaskPriority: "high"}},
+		{name: "Reply: question", field: "reply_question", cfg: models.ActionConfig{Type: "create_task", TaskTitle: "Reply needs answer: {{first_name}} {{last_name}}", TaskType: "email", TaskPriority: "high"}},
+		{name: "Reply: wrong person", field: "reply_wrong_person", cfg: models.ActionConfig{Type: "create_task", TaskTitle: "Wrong person/referral reply: {{first_name}} {{last_name}}", TaskType: "email", TaskPriority: "medium"}},
+		{name: "Reply: referral", field: "reply_referral", cfg: models.ActionConfig{Type: "create_task", TaskTitle: "Referral from campaign reply: {{first_name}} {{last_name}}", TaskType: "email", TaskPriority: "high"}},
+		{name: "Reply: bad timing", field: "reply_bad_timing", cfg: models.ActionConfig{Type: "create_task", TaskTitle: "Bad timing/later reply: {{first_name}} {{last_name}}", TaskType: "email", TaskPriority: "medium"}},
+		{name: "Reply: automated", field: "reply_automated", cfg: models.ActionConfig{Type: "fire_event", EventName: "campaign.reply.automated"}},
+		{name: "Reply: negative", field: "reply_negative", cfg: models.ActionConfig{Type: "fire_event", EventName: "campaign.reply.negative"}},
+	}
+}
+
+func applyStandardReplyActionScaffold(ctx context.Context, tx pgx.Tx, campaignID uuid.UUID, orgID *uuid.UUID, startPosition int, emailStepIDs []uuid.UUID) *errx.Error {
+	if len(emailStepIDs) == 0 {
+		return nil
+	}
+	nodes := standardReplyActionNodes()
+	targets := make(map[string]uuid.UUID, len(nodes))
+	stop := models.BranchConditions{Branches: []models.Branch{{BranchID: "standard_reply_stop"}}}
+	stopJSON, _ := json.Marshal(stop)
+	for i, node := range nodes {
+		actionJSON, merr := json.Marshal(node.cfg)
+		if merr != nil {
+			db.CaptureError(merr, "", nil, "marshal_standard_reply_action")
+			return errx.InternalError()
+		}
+		insert := `
+			INSERT INTO sequences (
+				campaign_id, organization_id, name, subject,
+				body_plain, body_html, body_sync, body_code,
+				wait_after, position, conditions, kind, action
+			) VALUES ($1, $2, $3, '', '', '<div></div>', true, false, 0, $4, $5, 'action', $6)
+			RETURNING id
+		`
+		var id uuid.UUID
+		if err := tx.QueryRow(ctx, insert, campaignID, orgID, node.name, startPosition+i, stopJSON, actionJSON).Scan(&id); err != nil {
+			db.CaptureError(err, insert, []any{campaignID, orgID, node.name, startPosition + i}, "queryrow")
+			return errx.InternalError()
+		}
+		targets[node.field] = id
+	}
+	for _, stepID := range emailStepIDs {
+		branches := make([]models.Branch, 0, len(nodes))
+		for _, node := range nodes {
+			target := targets[node.field]
+			field := node.field
+			if field == "unsubscribe" {
+				field = "reply_unsubscribe"
+			}
+			conditions := []models.BranchCondition{{Field: field, Operator: "ever"}}
+			branches = append(branches, models.Branch{BranchID: "standard_" + field, TargetSequenceID: &target, Conditions: conditions})
+		}
+		bc := models.BranchConditions{Branches: branches}
+		raw, merr := json.Marshal(bc)
+		if merr != nil {
+			db.CaptureError(merr, "", nil, "marshal_standard_reply_conditions")
+			return errx.InternalError()
+		}
+		update := `UPDATE sequences SET conditions = $1 WHERE id = $2 AND campaign_id = $3`
+		if _, err := tx.Exec(ctx, update, raw, stepID, campaignID); err != nil {
+			db.CaptureError(err, update, []any{stepID, campaignID}, "exec")
+			return errx.InternalError()
+		}
+	}
+	return nil
+}
+
 func (r *campaignRepository) Create(ctx context.Context, userID string, orgID *uuid.UUID, data *models.CreateCampaign) (*models.Campaign, *errx.Error) {
 	// Validate all optional inputs up front so we don't open a tx for a
 	// payload we'll reject. Required fields are validated by the service.
@@ -241,6 +317,21 @@ func (r *campaignRepository) Create(ctx context.Context, userID string, orgID *u
 		}
 		if len(seq.BodyPlain) > config.SequenceBodyLimit || len(seq.BodyHTML) > config.SequenceBodyLimit {
 			return nil, errx.ErrSequenceBody
+		}
+		if seq.Conditions != nil {
+			if verr := validateBranchConditions(seq.Conditions); verr != nil {
+				return nil, verr
+			}
+		}
+		if seq.Kind != nil {
+			if *seq.Kind != "email" && *seq.Kind != "action" && *seq.Kind != "wait" {
+				return nil, errx.ErrSequenceKind
+			}
+		}
+		if seq.Action != nil {
+			if verr := validateActionConfig(seq.Action); verr != nil {
+				return nil, verr
+			}
 		}
 		if seq.Name == "" {
 			data.Sequences[i].Name = fmt.Sprintf("Step %d", i+1)
@@ -481,7 +572,10 @@ func (r *campaignRepository) Create(ctx context.Context, userID string, orgID *u
 
 	// Initial sequences. Position is the array index; wait_after defaults
 	// to 0 for the first step and 3 days for any follow-ups so a default
-	// wizard run still produces something usable.
+	// wizard run still produces something usable. The create payload accepts
+	// the same routing/action fields as PATCH /sequences so campaign creation
+	// can atomically persist complete reply-action graphs.
+	emailStepIDs := make([]uuid.UUID, 0, len(data.Sequences))
 	if len(data.Sequences) > 0 {
 		for i, seq := range data.Sequences {
 			waitAfter := 0
@@ -506,21 +600,60 @@ func (r *campaignRepository) Create(ctx context.Context, userID string, orgID *u
 			if bodyHTML == "" {
 				bodyHTML = "<div></div>"
 			}
+			kind := "email"
+			if seq.Kind != nil {
+				kind = *seq.Kind
+			}
+			var conditionsJSON any = []byte(`{}`)
+			if seq.Conditions != nil {
+				raw, merr := json.Marshal(seq.Conditions)
+				if merr != nil {
+					db.CaptureError(merr, "", nil, "marshal_conditions")
+					return nil, errx.InternalError()
+				}
+				conditionsJSON = raw
+			}
+			var actionJSON any = []byte(`{}`)
+			if seq.Action != nil {
+				raw, merr := json.Marshal(seq.Action)
+				if merr != nil {
+					db.CaptureError(merr, "", nil, "marshal_action")
+					return nil, errx.InternalError()
+				}
+				actionJSON = raw
+			}
 			seqInsert := `
 				INSERT INTO sequences (
 					campaign_id, organization_id, name, subject,
 					body_plain, body_html, body_sync, body_code,
-					wait_after, position
-				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+					wait_after, position, conditions, kind, action
+				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+				RETURNING id
 			`
 			seqParams := []any{
 				campaign.ID, orgID, seq.Name, seq.Subject,
 				seq.BodyPlain, bodyHTML, bodySync, bodyCode,
-				waitAfter, i + 1,
+				waitAfter, i + 1, conditionsJSON, kind, actionJSON,
 			}
-			if _, err := tx.Exec(ctx, seqInsert, seqParams...); err != nil {
-				db.CaptureError(err, seqInsert, seqParams, "exec")
+			var seqID uuid.UUID
+			if err := tx.QueryRow(ctx, seqInsert, seqParams...).Scan(&seqID); err != nil {
+				db.CaptureError(err, seqInsert, seqParams, "queryrow")
 				return nil, errx.InternalError()
+			}
+			if kind == "email" {
+				emailStepIDs = append(emailStepIDs, seqID)
+			}
+		}
+		policy := "standard_pattrn"
+		if data.DefaultReplyActionPolicy != nil {
+			policy = strings.TrimSpace(strings.ToLower(*data.DefaultReplyActionPolicy))
+		}
+		if policy != "" && policy != "none" && len(emailStepIDs) > 0 {
+			if policy != "standard_pattrn" {
+				return nil, errx.New(errx.BadRequest, "unsupported default_reply_action_policy")
+			}
+			if xerr := applyStandardReplyActionScaffold(ctx, tx, campaign.ID, orgID, len(data.Sequences)+1, emailStepIDs); xerr != nil {
+				return nil, xerr
 			}
 		}
 	}
@@ -777,6 +910,78 @@ func (r *campaignRepository) Overview(ctx context.Context, orgID string) (*model
 	}
 
 	return &overview, nil
+}
+
+func (r *campaignRepository) QueueDiagnostics(ctx context.Context, orgID uuid.UUID, campaignID uuid.UUID) (*models.CampaignQueueDiagnostics, error) {
+	query := `
+		WITH campaign_scope AS (
+			SELECT id, risky_emails
+			FROM campaigns
+			WHERE id = $2 AND organization_id = $1
+		), lead_state AS (
+			SELECT
+				cl.campaign_id,
+				c.subscribed,
+				c.verification_status,
+				cs.risky_emails,
+				COALESCE(pr.has_sent, false) AS has_sent,
+				COALESCE(pr.has_replied, false) AS has_replied,
+				COALESCE(pr.has_bounced, false) AS has_bounced,
+				pr.resume_at,
+				EXISTS (
+					SELECT 1 FROM suppressed_recipients sr
+					WHERE sr.organization_id = $1
+					  AND LOWER(sr.email) = LOWER(c.email)
+					  AND (sr.expires_at IS NULL OR sr.expires_at > NOW())
+				) AS is_suppressed
+			FROM campaign_scope cs
+			JOIN campaign_leads cl ON cl.campaign_id = cs.id
+			JOIN contacts c ON c.id = cl.contact_id AND c.organization_id = $1
+			LEFT JOIN LATERAL (
+				SELECT
+					bool_or(p.sent_at IS NOT NULL) AS has_sent,
+					bool_or(p.replied_at IS NOT NULL) AS has_replied,
+					bool_or(p.bounced_at IS NOT NULL) AS has_bounced,
+					MAX(p.resume_at) FILTER (WHERE p.sent_at IS NOT NULL) AS resume_at
+				FROM campaign_contact_progress p
+				WHERE p.campaign_id = cl.campaign_id AND p.contact_id = cl.contact_id
+			) pr ON true
+		), pending_tasks AS (
+			SELECT COUNT(*)::int AS n
+			FROM campaign_scope cs
+			JOIN campaign_tasks ct ON ct.campaign_id = cs.id
+			JOIN tasks t ON t.id = ct.task_id
+			WHERE t.status = 'pending'
+		)
+		SELECT
+			cs.id,
+			COUNT(ls.*)::int,
+			COUNT(ls.*) FILTER (WHERE subscribed AND NOT has_sent AND NOT has_replied AND NOT has_bounced)::int,
+			COUNT(ls.*) FILTER (WHERE subscribed AND NOT has_sent AND NOT has_replied AND NOT has_bounced AND NOT is_suppressed AND (resume_at IS NULL OR resume_at <= NOW()) AND (verification_status IS NULL OR verification_status <> 'invalid') AND (risky_emails OR verification_status IS NULL OR verification_status <> 'risky'))::int,
+			COUNT(ls.*) FILTER (WHERE verification_status = 'invalid')::int,
+			COUNT(ls.*) FILTER (WHERE NOT risky_emails AND verification_status = 'risky')::int,
+			COUNT(ls.*) FILTER (WHERE NOT subscribed OR is_suppressed)::int,
+			COUNT(ls.*) FILTER (WHERE has_bounced)::int,
+			COUNT(ls.*) FILTER (WHERE has_replied)::int,
+			COUNT(ls.*) FILTER (WHERE has_sent)::int,
+			(SELECT n FROM pending_tasks)
+		FROM campaign_scope cs
+		LEFT JOIN lead_state ls ON ls.campaign_id = cs.id
+		GROUP BY cs.id
+	`
+	out := &models.CampaignQueueDiagnostics{}
+	if err := r.DB.QueryRow(ctx, query, orgID, campaignID).Scan(
+		&out.CampaignID, &out.TotalLeads, &out.QueuedLeads, &out.SchedulerEligible,
+		&out.ExcludedInvalid, &out.ExcludedRisky, &out.ExcludedUnsub,
+		&out.ExcludedBounced, &out.ExcludedReplied, &out.AlreadySent, &out.PendingTasks,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errx.ErrResourceNotFound
+		}
+		db.CaptureError(err, query, []any{orgID, campaignID}, "queryrow")
+		return nil, err
+	}
+	return out, nil
 }
 
 func (r *campaignRepository) Delete(ctx context.Context, userID, campaignID string) error {
@@ -1377,6 +1582,43 @@ func (r *campaignRepository) ValidateCampaignReady(ctx context.Context, campaign
 		return errx.New(errx.BadRequest, "campaign must have at least one active sending mailbox")
 	}
 	return nil
+}
+
+func (r *campaignRepository) HasQueuedSendableLeads(ctx context.Context, campaignID uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM campaign_leads cl
+			JOIN contacts c ON c.id = cl.contact_id
+			JOIN campaigns camp ON camp.id = cl.campaign_id
+			LEFT JOIN LATERAL (
+				SELECT
+					bool_or(p.sent_at IS NOT NULL) AS has_sent,
+					bool_or(p.replied_at IS NOT NULL) AS has_replied,
+					bool_or(p.bounced_at IS NOT NULL) AS has_bounced,
+					MAX(p.resume_at) FILTER (WHERE p.sent_at IS NOT NULL) AS resume_at
+				FROM campaign_contact_progress p
+				WHERE p.campaign_id = cl.campaign_id AND p.contact_id = cl.contact_id
+			) pr ON true
+			WHERE cl.campaign_id = $1
+			  AND c.subscribed
+			  AND NOT COALESCE(pr.has_sent, false)
+			  AND NOT COALESCE(pr.has_replied, false)
+			  AND NOT COALESCE(pr.has_bounced, false)
+			  AND (pr.resume_at IS NULL OR pr.resume_at <= NOW())
+			  AND NOT EXISTS (
+			    SELECT 1 FROM suppressed_recipients sr
+			    WHERE sr.organization_id = camp.organization_id
+			      AND LOWER(sr.email) = LOWER(c.email)
+			      AND (sr.expires_at IS NULL OR sr.expires_at > NOW())
+			  )
+			  AND (c.verification_status IS NULL OR c.verification_status <> 'invalid')
+			  AND (camp.risky_emails OR c.verification_status IS NULL OR c.verification_status <> 'risky')
+		)
+	`
+	var ok bool
+	err := r.DB.QueryRow(ctx, query, campaignID).Scan(&ok)
+	return ok, err
 }
 
 // GetPendingCampaignTasks returns all pending tasks for a campaign

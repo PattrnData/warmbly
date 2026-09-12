@@ -894,6 +894,14 @@ func (s *service) ProcessIncomingReply(ctx context.Context, emailAccountID uuid.
 		// skipped the model.
 		_ = s.campaignProgressRepo.RecordReplyClassification(ctx, cID, ctID, sID, replyResult.Class, replyResult.Source, replyResult.Confidence)
 
+		// Recipient-level pause/resume for OOO and "later / bad timing" replies.
+		// This deliberately pauses only this contact's next scheduler eligibility;
+		// it does not pause the whole campaign or affect other contacts. A later
+		// parser can replace this conservative default with an extracted return date.
+		if replyResult.Class == replyclassify.ClassOutOfOffice || replyResult.Class == replyclassify.ClassBadTiming {
+			_ = s.campaignProgressRepo.MarkRecipientResumeAt(ctx, cID, ctID, sID, time.Now().UTC().Add(72*time.Hour))
+		}
+
 		// OOO trap fix: only a HUMAN reply stamps replied_at. An auto_reply /
 		// out_of_office must NOT count as a reply, or it would (a) trip
 		// stop_on_reply and silently halt the sequence, and (b) match the plain

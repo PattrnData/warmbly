@@ -17,6 +17,7 @@ func TestReplyActionIntentBranchFieldsValidateAndMatch(t *testing.T) {
 		{field: "reply_wrong_person", class: "wrong_person"},
 		{field: "reply_bad_timing", class: "bad_timing"},
 		{field: "reply_referral", class: "referral"},
+		{field: "reply_unsubscribe", class: "unsubscribe"},
 	} {
 		t.Run(tc.field, func(t *testing.T) {
 			bc := &models.BranchConditions{Branches: []models.Branch{{
@@ -42,7 +43,7 @@ func TestReplyActionIntentBranchFieldsValidateAndMatch(t *testing.T) {
 }
 
 func TestReplyActionIntentBranchesArePositiveReplyBranches(t *testing.T) {
-	for _, field := range []string{"reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral"} {
+	for _, field := range []string{"reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_unsubscribe", "reply_negative", "reply_automated"} {
 		b := &models.Branch{Conditions: []models.BranchCondition{{Field: field, Operator: "ever"}}}
 		if !branchHasPositiveReplyCondition(b) {
 			t.Fatalf("branchHasPositiveReplyCondition(%s) = false, want true", field)
