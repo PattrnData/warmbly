@@ -824,6 +824,10 @@ func (s *service) ProcessIncomingReply(ctx context.Context, emailAccountID uuid.
 	var sequenceID *uuid.UUID
 	var contactID *uuid.UUID
 	var taskID *uuid.UUID
+	replyClass := string(intent)
+	replySource := "legacy"
+	replyConfidence := confidence
+	isAutomatedReply := false
 
 	// First, try exact message threading via In-Reply-To.
 	for _, mid := range msg.InReplyTo {
@@ -893,6 +897,10 @@ func (s *service) ProcessIncomingReply(ctx context.Context, emailAccountID uuid.
 		// for every reply, so OOO/unsubscribe stay correct even when the gate
 		// skipped the model.
 		_ = s.campaignProgressRepo.RecordReplyClassification(ctx, cID, ctID, sID, replyResult.Class, replyResult.Source, replyResult.Confidence)
+		replyClass = replyResult.Class
+		replySource = replyResult.Source
+		replyConfidence = replyResult.Confidence
+		isAutomatedReply = replyclassify.IsAutomated(replyResult.Class)
 
 		// Recipient-level pause/resume for OOO and "later / bad timing" replies.
 		// This deliberately pauses only this contact's next scheduler eligibility;
@@ -907,7 +915,7 @@ func (s *service) ProcessIncomingReply(ctx context.Context, emailAccountID uuid.
 		// stop_on_reply and silently halt the sequence, and (b) match the plain
 		// "replied" branch. Both stop_on_reply and the "replied" condition key off
 		// replied_at IS NOT NULL, so gating the stamp here fixes both at once.
-		if !replyclassify.IsAutomated(replyResult.Class) {
+		if !isAutomatedReply {
 			_ = s.campaignProgressRepo.RecordEmailReplied(ctx, cID, ctID, sID)
 			_ = s.repo.MarkVariantEvent(ctx, cID, ctID, string(models.DeliverabilityEventReply))
 
@@ -959,7 +967,8 @@ func (s *service) ProcessIncomingReply(ctx context.Context, emailAccountID uuid.
 	}
 
 	if settings.ReplyIntent.AutoSuppressOnUnsubWord &&
-		containsAnyKeyword(text, []string{"unsubscribe", "remove me", "stop"}) {
+		(containsAnyKeyword(text, []string{"unsubscribe", "remove me", "stop"}) ||
+			replyClass == replyclassify.ClassUnsubscribe) {
 		_ = s.repo.UpsertSuppressedRecipient(ctx, &models.SuppressedRecipient{
 			OrganizationID: *account.OrganizationID,
 			Email:          sender,
@@ -1014,13 +1023,18 @@ func (s *service) ProcessIncomingReply(ctx context.Context, emailAccountID uuid.
 	// automation filter for e.g. only "positive" replies. This is the trigger
 	// behind "notify me when a prospect replies".
 	payload := map[string]any{
-		"contact_email": sender,
-		"intent":        string(intent),
-		"confidence":    confidence,
-		"subject":       msg.Subject,
-		"snippet":       msg.Snippet,
-		"action_taken":  actionTaken,
-		"trigger":       "campaign_reply",
+		"contact_email":    sender,
+		"intent":           replyClass,
+		"legacy_intent":    string(intent),
+		"confidence":       replyConfidence,
+		"reply_class":      replyClass,
+		"reply_source":     replySource,
+		"reply_confidence": replyConfidence,
+		"is_automated":     isAutomatedReply,
+		"subject":          msg.Subject,
+		"snippet":          msg.Snippet,
+		"action_taken":     actionTaken,
+		"trigger":          "campaign_reply",
 		// thread_id lets a "label email" automation action tag the conversation
 		// this reply belongs to. _user_id is the mailbox owner (categories are per
 		// user); the leading underscore keeps it out of outbound customer webhook

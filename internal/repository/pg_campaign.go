@@ -644,7 +644,7 @@ func (r *campaignRepository) Create(ctx context.Context, userID string, orgID *u
 				emailStepIDs = append(emailStepIDs, seqID)
 			}
 		}
-		policy := "standard_pattrn"
+		policy := "none"
 		if data.DefaultReplyActionPolicy != nil {
 			policy = strings.TrimSpace(strings.ToLower(*data.DefaultReplyActionPolicy))
 		}

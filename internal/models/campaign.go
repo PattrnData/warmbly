@@ -318,9 +318,11 @@ type CreateCampaign struct {
 	// Initial sequences (in order) — caller can also create them after.
 	Sequences []CreateSequenceInput `json:"steps,omitempty"`
 
-	// DefaultReplyActionPolicy controls server-generated reply-classification
-	// branches/action nodes for new campaigns. Empty defaults to "standard_pattrn"
-	// when initial email steps are provided; "none" opts out for specialised flows.
+	// DefaultReplyActionPolicy controls optional server-generated visual
+	// reply-classification branches/action nodes for new campaigns. Empty defaults
+	// to "none" because reply outcomes are handled by the webhook-first
+	// reply policy; "standard_pattrn" remains an explicit compatibility opt-in
+	// for specialised visual flows.
 	DefaultReplyActionPolicy *string `json:"default_reply_action_policy,omitempty"`
 
 	// A/B variants for the first sequence — useful for "create + test" in one shot.
