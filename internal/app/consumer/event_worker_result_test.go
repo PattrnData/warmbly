@@ -5,10 +5,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/warmbly/warmbly/internal/errx"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/repository"
 )
 
 type fakeTaskResultRepo struct {
+	task          *repository.Task
 	statusTaskID  uuid.UUID
 	status        string
 	messageTaskID uuid.UUID
@@ -16,6 +19,13 @@ type fakeTaskResultRepo struct {
 	failureTaskID uuid.UUID
 	failureTitle  string
 	failureMsg    string
+}
+
+func (f *fakeTaskResultRepo) GetTask(_ context.Context, taskID uuid.UUID) (*repository.Task, error) {
+	if f.task == nil {
+		return &repository.Task{ID: taskID}, nil
+	}
+	return f.task, nil
 }
 
 func (f *fakeTaskResultRepo) UpdateTaskStatus(_ context.Context, taskID uuid.UUID, status string) error {
@@ -60,6 +70,55 @@ func TestEmailSentResultCompletesTaskAndPersistsMessageID(t *testing.T) {
 	if repo.statusTaskID != taskID || repo.status != "completed" {
 		t.Fatalf("status update = (%s, %q), want (%s, completed)", repo.statusTaskID, repo.status, taskID)
 	}
+}
+
+func TestEmailSentResultResolvesRetryMailboxErrors(t *testing.T) {
+	taskID := uuid.New()
+	accountID := uuid.New()
+	tasks := &fakeTaskResultRepo{task: &repository.Task{ID: taskID, EmailAccountID: accountID}}
+	errors := &fakeEmailAccountErrorRepo{}
+	svc := &JobsService{TaskResultRepository: tasks, EmailAccountErrorRepository: errors}
+	svc.InitEvents()
+
+	err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeEmailSent,
+		Body: map[string]any{
+			"task_id": taskID.String(),
+			"success": true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("HandleEvent EMAIL_SENT returned error: %v", err)
+	}
+	if errors.accountID != accountID || errors.method != "RETRY" {
+		t.Fatalf("resolved retry errors for (%s, %q), want (%s, RETRY)", errors.accountID, errors.method, accountID)
+	}
+}
+
+type fakeEmailAccountErrorRepo struct {
+	accountID uuid.UUID
+	method    string
+}
+
+func (f *fakeEmailAccountErrorRepo) Create(context.Context, *repository.CreateEmailAccountError) (*repository.EmailAccountError, *errx.Error) {
+	return nil, nil
+}
+func (f *fakeEmailAccountErrorRepo) GetByAccountID(context.Context, uuid.UUID, bool) ([]repository.EmailAccountError, *errx.Error) {
+	return nil, nil
+}
+func (f *fakeEmailAccountErrorRepo) GetByUserID(context.Context, uuid.UUID, int) ([]repository.EmailAccountError, *errx.Error) {
+	return nil, nil
+}
+func (f *fakeEmailAccountErrorRepo) Resolve(context.Context, uuid.UUID, string) *errx.Error {
+	return nil
+}
+func (f *fakeEmailAccountErrorRepo) ResolveByMethod(_ context.Context, accountID uuid.UUID, method string) *errx.Error {
+	f.accountID = accountID
+	f.method = method
+	return nil
+}
+func (f *fakeEmailAccountErrorRepo) ResolveAllForAccount(context.Context, uuid.UUID, string) *errx.Error {
+	return nil
 }
 
 func TestEmailServerErrorTaskResultRecordsTaskFailure(t *testing.T) {

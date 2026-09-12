@@ -2935,8 +2935,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_email_error.go": {
-    "mtime": 1785394382.660535,
-    "ast_hash": "1d4333d958cb2bb13c5f1ce8fe29cffb",
+    "mtime": 1787562309.4586267,
+    "ast_hash": "56c2038eddea2624f5ec6b9a4b58f204",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_flags_update.go": {
@@ -2975,8 +2975,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_remove_email.go": {
-    "mtime": 1785394382.6625352,
-    "ast_hash": "aba6592783eb63b80019bf5d2da280f2",
+    "mtime": 1787561349.9904325,
+    "ast_hash": "6a9811490fb905760cb1a2f92e94dd4a",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_token_update.go": {
@@ -2990,8 +2990,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_update_email.go": {
-    "mtime": 1785394382.6625352,
-    "ast_hash": "381748166ae7a54f1d97d4b324bdbab1",
+    "mtime": 1787561452.24244,
+    "ast_hash": "a4aa3c188f988ece8e9d505d41716e05",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_worker_health.go": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/events.go": {
-    "mtime": 1785510759.8703077,
-    "ast_hash": "5cf431f6f909115aabaf7666725bdf13",
+    "mtime": 1787561712.1099977,
+    "ast_hash": "fc97bdb26a4d346604beaf7bb1e76800",
     "semantic_hash": ""
   },
   "internal/app/consumer/open_class.go": {
@@ -6135,8 +6135,8 @@
     "semantic_hash": ""
   },
   "internal/repository/pg_campaign_progress.go": {
-    "mtime": 1785500257.1850848,
-    "ast_hash": "f9497defad6724dd312d698411fbd3b2",
+    "mtime": 1787563539.6978939,
+    "ast_hash": "78203c611ca8f371e23f94e4cd1fe954",
     "semantic_hash": ""
   },
   "internal/repository/pg_compose.go": {
@@ -6185,8 +6185,8 @@
     "semantic_hash": ""
   },
   "internal/repository/pg_email_error.go": {
-    "mtime": 1785394382.7305348,
-    "ast_hash": "82dbc5c14316e083e4c94d936b16622f",
+    "mtime": 1787561349.9904325,
+    "ast_hash": "924325ecf4ba111f7f0e1b21612bb3ef",
     "semantic_hash": ""
   },
   "internal/repository/pg_email_message_map.go": {
@@ -13310,8 +13310,8 @@
     "semantic_hash": ""
   },
   "web/src/lib/helper/reviveDates.ts": {
-    "mtime": 1785394382.941533,
-    "ast_hash": "84b3e0e818d02b4effe096c01663f28f",
+    "mtime": 1787234435.5672448,
+    "ast_hash": "cd5e1cd13a385c2d80f9349c9393fcf8",
     "semantic_hash": ""
   },
   "web/src/lib/helper/serializeDates.ts": {
@@ -14455,13 +14455,13 @@
     "semantic_hash": ""
   },
   "internal/app/consumer/event_worker_result.go": {
-    "mtime": 1785510842.5418675,
-    "ast_hash": "e93dfd189e5f1972447db504cf790f8b",
+    "mtime": 1787562309.4586267,
+    "ast_hash": "4ac6bfbc50d63a3cc307cc294bec5922",
     "semantic_hash": ""
   },
   "internal/app/consumer/event_worker_result_test.go": {
-    "mtime": 1785510878.6346753,
-    "ast_hash": "390e798acf7fe9ed75f571a90ad78400",
+    "mtime": 1787562309.5716257,
+    "ast_hash": "b8caf086ff5901593450c1718f61f36e",
     "semantic_hash": ""
   },
   "internal/app/replyclassify/priority_matrix_test.go": {
@@ -14470,13 +14470,18 @@
     "semantic_hash": ""
   },
   "docs/pattrn-warmbly-mailbox-expansion-plan-2026-08-01.md": {
-    "mtime": 1785616377.5769963,
-    "ast_hash": "cd8117ed335817620f783dca10a4adc9",
+    "mtime": 1785619337.0833697,
+    "ast_hash": "f80a7b513a37b67231cbe4598a8ba51f",
     "semantic_hash": ""
   },
   "docs/pattrn-warmbly-james-kiosk-setup-evidence-2026-08-01.md": {
     "mtime": 1785613573.555676,
     "ast_hash": "d4d9b92100da841ba5c6f68cf6d7b5af",
+    "semantic_hash": ""
+  },
+  "internal/app/consumer/event_remove_email_test.go": {
+    "mtime": 1787561349.9904325,
+    "ast_hash": "53d13a760657c7ba1fe98646339d14f3",
     "semantic_hash": ""
   }
 }

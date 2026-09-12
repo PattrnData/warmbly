@@ -49,6 +49,7 @@ All paths below are relative to the versioned base URL `https://api.warmbly.com/
 | POST | `/campaigns/:id/start` | `SEND_CAMPAIGNS` |
 | POST | `/campaigns/:id/stop` | `SEND_CAMPAIGNS` |
 | GET | `/campaigns/:id/logs` | `READ_CAMPAIGNS` |
+| GET | `/campaigns/:id/queue-diagnostics` | `READ_CAMPAIGNS` |
 | GET/POST/PATCH/DELETE | `/campaigns/:id/steps[/:sid]` | `READ_CAMPAIGNS` for GET, `WRITE_CAMPAIGNS` otherwise |
 | PATCH | `/campaigns/:id/step-layout` | `WRITE_CAMPAIGNS` |
 | POST | `/generation/write` | `WRITE_CAMPAIGNS` |

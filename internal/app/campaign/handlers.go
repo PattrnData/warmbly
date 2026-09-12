@@ -102,6 +102,21 @@ func (s *campaignService) Search(ctx context.Context, orgID, query, cursor, fold
 	return resp, nil
 }
 
+func (s *campaignService) QueueDiagnostics(ctx context.Context, orgID uuid.UUID, campaignID string) (*models.CampaignQueueDiagnostics, *errx.Error) {
+	cid, err := uuid.Parse(campaignID)
+	if err != nil {
+		return nil, errx.ErrUuid
+	}
+	resp, rerr := s.campaignRepository.QueueDiagnostics(ctx, orgID, cid)
+	if rerr != nil {
+		if rerr == errx.ErrResourceNotFound {
+			return nil, errx.ErrNotFound
+		}
+		return nil, errx.InternalError()
+	}
+	return resp, nil
+}
+
 func (s *campaignService) Overview(ctx context.Context, orgID string) (*models.CampaignsOverview, *errx.Error) {
 	resp, err := s.campaignRepository.Overview(ctx, orgID)
 	if err != nil {
@@ -145,9 +160,21 @@ func (s *campaignService) StartCampaign(ctx context.Context, orgID uuid.UUID, ca
 		return errx.ErrNotFound
 	}
 
-	// Verify status allows starting
-	if campaign.Status != "draft" && campaign.Status != "paused" && campaign.Status != "paused_no_accounts" {
-		return errx.New(errx.BadRequest, "campaign must be in draft, paused, or paused_no_accounts status to start")
+	// Verify status allows starting. Completed campaigns are normally terminal,
+	// but a refill/import can add queued leads after completion; allow a controlled
+	// resume only when a fresh repository guard proves queued/sendable leads exist.
+	resumingCompleted := campaign.Status == "completed"
+	if campaign.Status != "draft" && campaign.Status != "paused" && campaign.Status != "paused_no_accounts" && !resumingCompleted {
+		return errx.New(errx.BadRequest, "campaign must be in draft, paused, paused_no_accounts, or completed-with-queued-leads status to start")
+	}
+	if resumingCompleted {
+		hasQueued, qerr := s.campaignRepository.HasQueuedSendableLeads(ctx, cID)
+		if qerr != nil {
+			return errx.InternalError()
+		}
+		if !hasQueued {
+			return errx.New(errx.BadRequest, "completed campaign has no queued sendable leads")
+		}
 	}
 
 	// Check cooldown
@@ -217,12 +244,18 @@ func (s *campaignService) StartCampaign(ctx context.Context, orgID uuid.UUID, ca
 		return xerr
 	}
 
-	// Log campaign started
+	// Log campaign started/resumed
 	if s.campaignLogRepo != nil {
+		message := "Campaign started"
+		eventType := "started"
+		if resumingCompleted {
+			message = "Campaign resumed"
+			eventType = "resumed"
+		}
 		s.campaignLogRepo.CreateLog(ctx, &repository.CampaignLogEntry{
 			CampaignID: cID,
-			EventType:  "started",
-			Message:    "Campaign started",
+			EventType:  eventType,
+			Message:    message,
 		})
 	}
 

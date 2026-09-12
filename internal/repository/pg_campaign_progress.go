@@ -22,6 +22,7 @@ type CampaignContactProgress struct {
 	RepliedAt    *time.Time
 	BouncedAt    *time.Time
 	ComplainedAt *time.Time
+	ResumeAt     *time.Time
 	// ReplyClass is the layered classifier verdict for the contact's reply
 	// (positive | negative | neutral | auto_reply | out_of_office | unsubscribe |
 	// unknown; "" when no reply was classified). Read by the reply_* branch
@@ -87,6 +88,9 @@ type CampaignProgressRepository interface {
 	// never trip stop_on_reply / the "replied" condition). Callers stamp
 	// replied_at separately via RecordEmailReplied for human replies only.
 	RecordReplyClassification(ctx context.Context, campaignID, contactID, sequenceID uuid.UUID, class, source string, confidence float64) error
+	// MarkRecipientResumeAt pauses only this contact/step until resumeAt, used by
+	// OOO and bad-timing/later replies without pausing the whole campaign.
+	MarkRecipientResumeAt(ctx context.Context, campaignID, contactID, sequenceID uuid.UUID, resumeAt time.Time) error
 	// RecordAILabel stores the case a "switch" sequence step chose for the contact
 	// on that step. Upserts (the AI step runs before its progress row is stamped
 	// sent). Read by the ai_label branch conditions when routing out of the step.
@@ -256,6 +260,17 @@ func (r *campaignProgressRepository) RecordReplyClassification(ctx context.Conte
 		              reply_source = EXCLUDED.reply_source
 	`
 	_, err := r.db.Exec(ctx, query, campaignID, contactID, sequenceID, class, confidence, source)
+	return err
+}
+
+func (r *campaignProgressRepository) MarkRecipientResumeAt(ctx context.Context, campaignID, contactID, sequenceID uuid.UUID, resumeAt time.Time) error {
+	query := `
+		INSERT INTO campaign_contact_progress (campaign_id, contact_id, sequence_id, resume_at)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (campaign_id, contact_id, sequence_id)
+		DO UPDATE SET resume_at = EXCLUDED.resume_at, updated_at = CURRENT_TIMESTAMP
+	`
+	_, err := r.db.Exec(ctx, query, campaignID, contactID, sequenceID, resumeAt)
 	return err
 }
 
@@ -763,16 +778,17 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 
 	query := `
 		SELECT cl.contact_id,
-		       lp.sequence_id, lp.sent_at, lp.opened_at, lp.clicked_at, lp.replied_at, COALESCE(lp.reply_class, ''), COALESCE(lp.ai_label, ''),
+		       lp.sequence_id, lp.sent_at, lp.opened_at, lp.clicked_at, lp.replied_at, lp.resume_at, COALESCE(lp.reply_class, ''), COALESCE(lp.ai_label, ''),
 		       COALESCE(ss.ids, '{}') AS sent_ids,
 		       EXISTS (
 		         SELECT 1 FROM campaign_contact_progress rp
 		         WHERE rp.campaign_id = $1 AND rp.contact_id = cl.contact_id AND rp.replied_at IS NOT NULL
 		       ) AS has_replied
 		FROM campaign_leads cl
+		JOIN campaigns camp0 ON camp0.id = cl.campaign_id
 		JOIN contacts c ON c.id = cl.contact_id
 		LEFT JOIN LATERAL (
-			SELECT sequence_id, sent_at, opened_at, clicked_at, replied_at, reply_class, ai_label
+			SELECT sequence_id, sent_at, opened_at, clicked_at, replied_at, resume_at, reply_class, ai_label
 			FROM campaign_contact_progress p
 			WHERE p.campaign_id = $1 AND p.contact_id = cl.contact_id AND p.sent_at IS NOT NULL
 			ORDER BY p.sent_at DESC LIMIT 1
@@ -783,6 +799,9 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 			WHERE p2.campaign_id = $1 AND p2.contact_id = cl.contact_id AND p2.sent_at IS NOT NULL
 		) ss ON true
 		WHERE cl.campaign_id = $1
+		  AND (c.verification_status IS NULL OR c.verification_status <> 'invalid')
+		  AND (camp0.risky_emails OR c.verification_status IS NULL OR c.verification_status <> 'risky')
+		  AND (lp.resume_at IS NULL OR lp.resume_at <= NOW())
 		  AND NOT EXISTS (
 		    SELECT 1 FROM campaign_contact_progress b
 		    WHERE b.contact_id = cl.contact_id AND b.bounced_at IS NOT NULL
@@ -806,11 +825,11 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 	for rows.Next() {
 		var contactID uuid.UUID
 		var lastSeq *uuid.UUID
-		var sentAt, openedAt, clickedAt, repliedAt *time.Time
+		var sentAt, openedAt, clickedAt, repliedAt, resumeAt *time.Time
 		var replyClass, aiLabel string
 		var sentIDs []uuid.UUID
 		var hasReplied bool
-		if serr := rows.Scan(&contactID, &lastSeq, &sentAt, &openedAt, &clickedAt, &repliedAt, &replyClass, &aiLabel, &sentIDs, &hasReplied); serr != nil {
+		if serr := rows.Scan(&contactID, &lastSeq, &sentAt, &openedAt, &clickedAt, &repliedAt, &resumeAt, &replyClass, &aiLabel, &sentIDs, &hasReplied); serr != nil {
 			return nil, nil, serr
 		}
 
@@ -825,7 +844,7 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 		} else {
 			prog := &CampaignContactProgress{
 				CampaignID: campaignID, ContactID: contactID, SequenceID: *lastSeq,
-				SentAt: sentAt, OpenedAt: openedAt, ClickedAt: clickedAt, RepliedAt: repliedAt,
+				SentAt: sentAt, OpenedAt: openedAt, ClickedAt: clickedAt, RepliedAt: repliedAt, ResumeAt: resumeAt,
 				ReplyClass: replyClass, AILabel: aiLabel,
 			}
 			sa := time.Time{}
@@ -891,7 +910,7 @@ func (r *campaignProgressRepository) FindNextRoutedPair(ctx context.Context, cam
 func branchHasPositiveReplyCondition(b *models.Branch) bool {
 	for i := range b.Conditions {
 		switch b.Conditions[i].Field {
-		case "replied", "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_automated":
+		case "replied", "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_unsubscribe", "reply_automated":
 			return true
 		}
 	}

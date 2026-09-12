@@ -114,6 +114,20 @@ func (h *Handler) GetCampaign(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func (h *Handler) GetCampaignQueueDiagnostics(c *gin.Context) {
+	orgID := middleware.GetOrganizationID(c)
+	if orgID == nil {
+		errx.JSON(c, errx.New(errx.BadRequest, "no organization selected"))
+		return
+	}
+	resp, err := h.CampaignService.QueueDiagnostics(c.Request.Context(), *orgID, c.Param("id"))
+	if err != nil {
+		errx.JSON(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *Handler) SearchCampaigns(c *gin.Context) {
 	orgID := middleware.GetOrganizationID(c)
 	if orgID == nil {

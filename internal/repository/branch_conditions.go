@@ -31,6 +31,7 @@ var branchConditionFields = map[string]bool{
 	"reply_wrong_person": true,
 	"reply_bad_timing":   true,
 	"reply_referral":     true,
+	"reply_unsubscribe":  true,
 	"reply_automated":    true,
 	// "random" routes a deterministic percentage of contacts down this branch
 	// (a random split / split-test). Pairs with operator "chance", Value = %.
@@ -169,7 +170,7 @@ func conditionState(cond models.BranchCondition, prog *CampaignContactProgress, 
 	// (no time window): the class is set when the reply arrives, so there is
 	// nothing to wait for. reply_automated folds auto_reply + out_of_office.
 	switch cond.Field {
-	case "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_automated":
+	case "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_unsubscribe", "reply_automated":
 		if replyClassMatches(cond.Field, prog.ReplyClass) {
 			return BranchMatch, time.Time{}
 		}
@@ -245,10 +246,6 @@ func conditionState(cond models.BranchCondition, prog *CampaignContactProgress, 
 // string. reply_automated is the union of the two automated classes. Mirrors
 // replyclassify's class constants (kept as literals here so this package stays
 // free of an app-layer import).
-//
-// Note: there is intentionally no reply_unsubscribe branch field. An
-// unsubscribe-classified reply is handled by suppression (advanced.Unsubscribe),
-// not routed through the canvas, so it matches no instant branch here.
 func replyClassMatches(field, class string) bool {
 	switch field {
 	case "reply_positive":
@@ -265,6 +262,8 @@ func replyClassMatches(field, class string) bool {
 		return class == "bad_timing"
 	case "reply_referral":
 		return class == "referral"
+	case "reply_unsubscribe":
+		return class == "unsubscribe"
 	case "reply_automated":
 		return class == "auto_reply" || class == "out_of_office"
 	default:
@@ -292,7 +291,7 @@ func fieldBelongsToEvent(field, eventKind string) bool {
 		// carries a day window and the editor presents it as a step-boundary path
 		// with no instant toggle, so it must NOT instant-fire here (parity with the
 		// frontend's INSTANT_CAPABLE_FIELDS, which also excludes "replied").
-		case "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_automated":
+		case "reply_positive", "reply_negative", "reply_neutral", "reply_question", "reply_wrong_person", "reply_bad_timing", "reply_referral", "reply_unsubscribe", "reply_automated":
 			return true
 		}
 	case "open":

@@ -197,6 +197,20 @@ type CampaignsOverview struct {
 	Folders   []CampaignFolderCount `json:"folders"`
 }
 
+type CampaignQueueDiagnostics struct {
+	CampaignID        uuid.UUID `json:"campaign_id"`
+	TotalLeads        int       `json:"total_leads"`
+	QueuedLeads       int       `json:"queued_leads"`
+	SchedulerEligible int       `json:"scheduler_eligible"`
+	ExcludedInvalid   int       `json:"excluded_invalid"`
+	ExcludedRisky     int       `json:"excluded_risky"`
+	ExcludedUnsub     int       `json:"excluded_unsubscribed"`
+	ExcludedBounced   int       `json:"excluded_bounced"`
+	ExcludedReplied   int       `json:"excluded_replied"`
+	AlreadySent       int       `json:"already_sent"`
+	PendingTasks      int       `json:"pending_tasks"`
+}
+
 type CampaignFolderCount struct {
 	FolderID uuid.UUID `json:"folder_id"`
 	Total    int64     `json:"total"`
@@ -304,6 +318,11 @@ type CreateCampaign struct {
 	// Initial sequences (in order) — caller can also create them after.
 	Sequences []CreateSequenceInput `json:"steps,omitempty"`
 
+	// DefaultReplyActionPolicy controls server-generated reply-classification
+	// branches/action nodes for new campaigns. Empty defaults to "standard_pattrn"
+	// when initial email steps are provided; "none" opts out for specialised flows.
+	DefaultReplyActionPolicy *string `json:"default_reply_action_policy,omitempty"`
+
 	// A/B variants for the first sequence — useful for "create + test" in one shot.
 	Variants []CreateCampaignABVariantRequest `json:"variants,omitempty"`
 
@@ -321,4 +340,10 @@ type CreateSequenceInput struct {
 	BodySync  *bool  `json:"body_sync,omitempty"`
 	BodyCode  *bool  `json:"body_code,omitempty"`
 	WaitAfter *int   `json:"wait_after,omitempty"`
+
+	// Optional graph fields let POST /campaigns atomically create the same
+	// branch/action/wait nodes that the sequence editor can PATCH later.
+	Conditions *BranchConditions `json:"conditions,omitempty"`
+	Kind       *string           `json:"kind,omitempty"`
+	Action     *ActionConfig     `json:"action,omitempty"`
 }
