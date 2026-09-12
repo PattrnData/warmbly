@@ -7,7 +7,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/warmbly
 
 jobs:
   validate-tag:
@@ -44,8 +43,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase image prefix
+        id: image-prefix
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          echo "image_prefix=ghcr.io/${owner,,}/warmbly" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -61,10 +67,10 @@ jobs:
           file: deploy/docker/${{ matrix.service }}.Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.ref_name }}
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.minor }}
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.major }}
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:prod
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:${{ github.ref_name }}
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.minor }}
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.major }}
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:prod
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
@@ -86,8 +92,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase image prefix
+        id: image-prefix
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          echo "image_prefix=ghcr.io/${owner,,}/warmbly" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -103,10 +116,10 @@ jobs:
           file: ./${{ matrix.service }}/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.ref_name }}
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.minor }}
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.major }}
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:prod
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:${{ github.ref_name }}
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.minor }}
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.major }}
+            ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:prod
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
@@ -139,6 +152,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Lowercase image prefix
+        id: image-prefix
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          echo "image_prefix=ghcr.io/${owner,,}/warmbly" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -155,7 +174,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           cache-from: type=gha,scope=${{ matrix.service }}-${{ steps.prep.outputs.pair }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ steps.prep.outputs.pair }}
-          outputs: type=image,name=${{ env.IMAGE_PREFIX }}/${{ matrix.service }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
@@ -190,6 +209,12 @@ jobs:
           pattern: digests-${{ matrix.service }}-*
           merge-multiple: true
 
+      - name: Lowercase image prefix
+        id: image-prefix
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          echo "image_prefix=ghcr.io/${owner,,}/warmbly" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -204,11 +229,11 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \
-            -t ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.ref_name }} \
-            -t ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.minor }} \
-            -t ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.major }} \
-            -t ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:prod \
-            $(printf '${{ env.IMAGE_PREFIX }}/${{ matrix.service }}@sha256:%s ' *)
+            -t ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:${{ github.ref_name }} \
+            -t ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.minor }} \
+            -t ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:v${{ needs.validate-tag.outputs.major }} \
+            -t ${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}:prod \
+            $(printf '${{ steps.image-prefix.outputs.image_prefix }}/${{ matrix.service }}@sha256:%s ' *)
 
   create-release:
     name: Create GitHub Release
@@ -220,6 +245,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Lowercase image prefix
+        id: image-prefix
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          echo "image_prefix=ghcr.io/${owner,,}/warmbly" >> "$GITHUB_OUTPUT"
 
       - name: Generate changelog
         id: changelog
@@ -257,13 +288,13 @@ jobs:
 
             | Service | Image |
             |---------|-------|
-            | Backend | `${{ env.IMAGE_PREFIX }}/backend:${{ github.ref_name }}` |
-            | Consumer | `${{ env.IMAGE_PREFIX }}/consumer:${{ github.ref_name }}` |
-            | Worker | `${{ env.IMAGE_PREFIX }}/worker:${{ github.ref_name }}` |
-            | Tracking | `${{ env.IMAGE_PREFIX }}/tracking:${{ github.ref_name }}` |
-            | Realtime | `${{ env.IMAGE_PREFIX }}/realtime:${{ github.ref_name }}` |
-            | Dashboard (web) | `${{ env.IMAGE_PREFIX }}/web:${{ github.ref_name }}` |
-            | Admin | `${{ env.IMAGE_PREFIX }}/admin:${{ github.ref_name }}` |
+            | Backend | `${{ steps.image-prefix.outputs.image_prefix }}/backend:${{ github.ref_name }}` |
+            | Consumer | `${{ steps.image-prefix.outputs.image_prefix }}/consumer:${{ github.ref_name }}` |
+            | Worker | `${{ steps.image-prefix.outputs.image_prefix }}/worker:${{ github.ref_name }}` |
+            | Tracking | `${{ steps.image-prefix.outputs.image_prefix }}/tracking:${{ github.ref_name }}` |
+            | Realtime | `${{ steps.image-prefix.outputs.image_prefix }}/realtime:${{ github.ref_name }}` |
+            | Dashboard (web) | `${{ steps.image-prefix.outputs.image_prefix }}/web:${{ github.ref_name }}` |
+            | Admin | `${{ steps.image-prefix.outputs.image_prefix }}/admin:${{ github.ref_name }}` |
 
             ## Deployment
 
