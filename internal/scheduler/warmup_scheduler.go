@@ -240,6 +240,12 @@ func (s *schedulerService) CalculateNextWarmupTime(ctx context.Context, accountI
 		minWaitSeconds = int(float64(account.MinWaitTime)*adj.minWaitMultiplier + 0.5)
 	}
 
+	if s.warmupRepo != nil {
+		if _, err := s.warmupRepo.GetOrCreateDailyStats(ctx, accountID, time.Now(), targetVolume); err != nil {
+			return time.Time{}, err
+		}
+	}
+
 	// STEP 3: Count emails already sent today
 	emailsSentToday, err := s.taskRepo.CountWarmupEmailsSentToday(ctx, accountID)
 	if err != nil {
