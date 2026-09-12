@@ -6,19 +6,17 @@ import (
 	"testing"
 )
 
-func TestCreateCampaignEmbedsStandardReplyActionPolicy(t *testing.T) {
+func TestCreateCampaignDoesNotDefaultToVisualReplyActionScaffold(t *testing.T) {
 	modelSrc, err := os.ReadFile("../models/campaign.go")
 	if err != nil {
 		t.Fatal(err)
 	}
 	s := string(modelSrc)
 	if !strings.Contains(s, "DefaultReplyActionPolicy") {
-		t.Fatalf("CreateCampaign must expose default_reply_action_policy for standardized reply scaffolding")
+		t.Fatalf("CreateCampaign must retain default_reply_action_policy as an explicit opt-in compatibility field")
 	}
-	for _, want := range []string{"Conditions", "*BranchConditions", "Action", "*ActionConfig", "Kind", "*string"} {
-		if !strings.Contains(s, want) {
-			t.Fatalf("CreateSequenceInput must accept kind/action/conditions so initial campaign creation can persist reply-action graphs atomically; missing %q", want)
-		}
+	if strings.Contains(s, "Empty defaults to \"standard_pattrn\"") {
+		t.Fatalf("default_reply_action_policy docs must not say visual reply scaffolding is the default")
 	}
 
 	repoSrc, err := os.ReadFile("pg_campaign.go")
@@ -26,20 +24,13 @@ func TestCreateCampaignEmbedsStandardReplyActionPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := string(repoSrc)
-	for _, want := range []string{
-		"applyStandardReplyActionScaffold",
-		"reply_positive",
-		"reply_question",
-		"reply_wrong_person",
-		"reply_bad_timing",
-		"reply_referral",
-		"reply_automated",
-		"reply_negative",
-		"unsubscribe",
-		"fire_event",
-	} {
-		if !strings.Contains(repo, want) {
-			t.Fatalf("standard reply scaffold missing %q", want)
-		}
+	if strings.Contains(repo, "policy := \"standard_pattrn\"") {
+		t.Fatalf("new campaign creation must not default to visual reply-action scaffolding")
+	}
+	if !strings.Contains(repo, "policy := \"none\"") {
+		t.Fatalf("new campaign creation should default reply action policy to none/webhook-first")
+	}
+	if !strings.Contains(repo, "applyStandardReplyActionScaffold") {
+		t.Fatalf("explicit standard_pattrn compatibility path should remain available for legacy/manual visual flows")
 	}
 }
