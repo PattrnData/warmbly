@@ -11,6 +11,9 @@ allowBuilds:
 # exist on the registry).
 overrides:
   picomatch: ^4.0.4
+  nanoid@3: 3.3.18
+  # Keep the verified older release until 1.5.1 clears minimumReleaseAge.
+  prosemirror-history: 1.5.0
   # Clear CVE-2026-59887 (quadratic-complexity ReDoS via `mailto:`) in the
   # transitive linkify-it.
   linkify-it: ^5.0.2

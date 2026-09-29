@@ -11,12 +11,12 @@ tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # AWS SDK
-aws-config = "1.1"
-aws-sdk-ssm = "1.15"
-aws-sdk-secretsmanager = "1.15"
+aws-config = { version = "1.1", default-features = false, features = ["default-https-client", "rt-tokio", "credentials-process", "sso"] }
+aws-sdk-ssm = { version = "1.15", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-sdk-secretsmanager = { version = "1.15", default-features = false, features = ["default-https-client", "rt-tokio"] }
 
 # NATS (default event bus): pure-Rust, no native librdkafka to compile.
-async-nats = "0.38"
+async-nats = "0.47"
 
 # Kafka with Avro (optional; enabled with `--features kafka`). rdkafka is the
 # only native/librdkafka dependency, so the default build compiles far faster
@@ -28,7 +28,7 @@ schema_registry_converter = { version = "4.0", features = ["avro", "blocking"], 
 # HTTP client for the click-ticket resolver (always needed by links.rs). Uses
 # rustls (pure Rust TLS) instead of native-tls so the default image needs no
 # OpenSSL system libraries.
-reqwest = { version = "0.11", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 
 # Utils
 uuid = { version = "1", features = ["v4", "serde"] }
