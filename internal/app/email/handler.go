@@ -167,7 +167,7 @@ func (s *emailService) removeFromAllWarmupPools(ctx context.Context, account *mo
 }
 
 func (s *emailService) canUseWarmupPool(ctx context.Context, account *models.Email) bool {
-	if account == nil || account.Status != "active" || account.OrganizationID == nil || s.featureGate == nil {
+	if account == nil || account.WarmupDenied || account.Status != "active" || account.OrganizationID == nil || s.featureGate == nil {
 		return false
 	}
 

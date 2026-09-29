@@ -227,6 +227,8 @@ type Handler struct {
 	// /api/v1/internal/email-message-map for the same no-direct-Postgres reason
 	// as EncryptedKeys. Backed by Postgres in the backend.
 	EmailMessageMap repository.EmailMessageMapRepository
+	// Worker-only durable warmup gate; never use worker-cached mailbox state.
+	WarmupDenyEmails repository.EmailRepository
 
 	// Click-link store, served to the tracking service over HTTPS at
 	// /api/v1/internal/tracked-links/:id (same no-direct-Postgres rule).

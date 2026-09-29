@@ -141,6 +141,7 @@ func (r *emailRepository) ListWarmupScheduleCandidates(ctx context.Context, limi
 		SELECT ea.id
 		FROM email_accounts ea
 		WHERE ea.status = 'active'
+		  AND NOT ea.warmup_denied
 		  AND ea.worker_id IS NOT NULL
 		  AND (
 		    (ea.warmup IS NOT NULL AND ea.warmup_paused_at IS NULL)
@@ -1088,7 +1089,7 @@ func (r *emailRepository) GetByID(ctx context.Context, emailAccountID uuid.UUID)
 		SELECT
 		 ea.id, ea.user_id, ea.organization_id, ea.worker_id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 		 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
-		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_base,
+		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at, ea.warmup, ea.warmup_paused_at, ea.warmup_denied, ea.warmup_base,
 		 ea.warmup_max, ea.warmup_increase, ea.warmup_reply_rate, COALESCE(ea.warmup_tag, ''), COALESCE(ea.warmup_pool_type, ''),
 		 COALESCE(ea.warmup_start_time::text, ''), COALESCE(ea.warmup_end_time::text, ''), ea.warmup_days, COALESCE(ea.timezone, ''),
 		 ea.created_at, ea.updated_at,
@@ -1103,7 +1104,7 @@ func (r *emailRepository) GetByID(ctx context.Context, emailAccountID uuid.UUID)
 	err := r.DB.QueryRow(ctx, query, emailAccountID).Scan(
 		&i.ID, &i.UserID, &i.OrganizationID, &i.WorkerID, &i.Email, &i.Name, &i.SignaturePlain, &i.SignatureHTML, &i.SignatureSync, &i.SignatureCode,
 		&i.Provider, &i.Status, &i.LastSyncedAt, &i.LastID, &i.CampaignLimit,
-		&i.MinWaitTime, &i.ReplyTo, &i.TrackingDomain, &i.TrackingDomainVerified, &i.TrackingDomainVerifiedAt, &i.Warmup, &i.WarmupPausedAt, &i.WarmupBase,
+		&i.MinWaitTime, &i.ReplyTo, &i.TrackingDomain, &i.TrackingDomainVerified, &i.TrackingDomainVerifiedAt, &i.Warmup, &i.WarmupPausedAt, &i.WarmupDenied, &i.WarmupBase,
 		&i.WarmupMax, &i.WarmupIncrease, &i.WarmupReplyRate, &i.WarmupTag, &i.WarmupPoolType,
 		&i.WarmupStartTime, &i.WarmupEndTime, &i.WarmupDays, &i.Timezone,
 		&i.CreatedAt, &i.UpdatedAt, &i.Tags,
