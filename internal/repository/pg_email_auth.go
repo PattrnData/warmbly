@@ -150,27 +150,89 @@ func (r *emailRepository) RevokeOauth(ctx context.Context, id string) *errx.Erro
 }
 
 func (r *emailRepository) RefreshBoxToken(ctx context.Context, id uuid.UUID, accessToken, refreshToken string, expiresAt time.Time) error {
-	query := `
-		UPDATE email_accounts_oauth
-		SET access_token = $1, refresh_token = $2, expires_at = $3
-		WHERE email_account_id = $4
-	`
-
-	params := []any{
-		accessToken,
-		refreshToken,
-		expiresAt,
-		id,
-	}
-
-	_, err := r.DB.Exec(
-		ctx,
-		query,
-		params...,
-	)
+	sealedAccess, sealedRefresh, err := r.sealOAuthTokens(accessToken, refreshToken)
 	if err != nil {
-		db.CaptureError(err, query, params, "exec")
 		return err
+	}
+	const query = `UPDATE email_accounts_oauth SET access_token = $1, refresh_token = $2, expires_at = $3 WHERE email_account_id = $4`
+	_, err = r.DB.Exec(ctx, query, sealedAccess, sealedRefresh, expiresAt, id)
+	if err != nil {
+		// Never log token-bearing parameters.
+		db.CaptureError(err, query, nil, "exec")
+	}
+	return err
+}
+
+// sealOAuthTokens mirrors GetOAuthCredentials: app-only sentinel rows retain
+// their legacy shape; delegated credentials must always be encrypted.
+func (r *emailRepository) sealOAuthTokens(accessToken, refreshToken string) (string, string, error) {
+	if accessToken == "" && refreshToken == models.GraphAppOnlyRefreshToken {
+		return "", refreshToken, nil
+	}
+	if r.Encrypt == nil {
+		return "", "", errNoCredentialEncrypter
+	}
+	if accessToken == "" || refreshToken == "" || refreshToken == models.GraphAppOnlyRefreshToken {
+		return "", "", errors.New("invalid delegated OAuth credential shape")
+	}
+	sealedAccess, err := r.Encrypt.Encrypt(accessToken)
+	if err != nil {
+		return "", "", err
+	}
+	sealedRefresh, err := r.Encrypt.Encrypt(refreshToken)
+	if err != nil {
+		return "", "", err
+	}
+	return sealedAccess, sealedRefresh, nil
+}
+
+// ReconnectOutlookCredentialVersion returns a non-secret fingerprint of the
+// stored credential for an exact inactive, owner/org-scoped delegated row.
+func (r *emailRepository) ReconnectOutlookCredentialVersion(ctx context.Context, userID string, orgID, id uuid.UUID) (string, *errx.Error) {
+	const query = `SELECT md5(o.refresh_token)
+		FROM email_accounts ea JOIN email_accounts_oauth o ON o.email_account_id = ea.id
+		WHERE ea.id = $1 AND ea.user_id = $2 AND ea.organization_id = $3
+		  AND ea.provider = 'outlook' AND ea.status = 'inactive'
+		  AND o.refresh_token <> $4
+	`
+	var version string
+	if err := r.DB.QueryRow(ctx, query, id, userID, orgID, models.GraphAppOnlyRefreshToken).Scan(&version); errors.Is(err, pgx.ErrNoRows) {
+		return "", errx.ErrEmailOnboardState
+	} else if err != nil {
+		db.CaptureError(err, query, nil, "queryrow")
+		return "", errx.InternalError()
+	}
+	return version, nil
+}
+
+// ReconnectOutlookToken updates credentials only for the exact inactive,
+// owner/org-scoped delegated Outlook mailbox. It does not activate it.
+func (r *emailRepository) ReconnectOutlookToken(ctx context.Context, userID string, orgID, id uuid.UUID, email, observedCredential, accessToken, refreshToken string, expiresAt time.Time) *errx.Error {
+	if observedCredential == "" {
+		return errx.ErrEmailOnboardState
+	}
+	sealedAccess, sealedRefresh, err := r.sealOAuthTokens(accessToken, refreshToken)
+	if err != nil {
+		sentry.CaptureException(err)
+		return errx.InternalError()
+	}
+	const query = `
+		UPDATE email_accounts_oauth o
+		SET access_token = $1, refresh_token = $2, expires_at = $3
+		FROM email_accounts ea
+		WHERE o.email_account_id = ea.id AND ea.id = $4
+		  AND ea.user_id = $5 AND ea.organization_id = $6
+		  AND lower(ea.email) = lower($7) AND ea.provider = 'outlook'
+		  AND ea.status = 'inactive'
+		  AND o.refresh_token <> $8 AND md5(o.refresh_token) = $9
+	`
+	tag, err := r.DB.Exec(ctx, query, sealedAccess, sealedRefresh, expiresAt, id, userID, orgID, email, models.GraphAppOnlyRefreshToken, observedCredential)
+	if err != nil {
+		db.CaptureError(err, query, nil, "exec")
+		return errx.InternalError()
+	}
+	if tag.RowsAffected() != 1 {
+		return errx.ErrEmailOnboardState
 	}
 	return nil
 }

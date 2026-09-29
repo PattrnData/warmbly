@@ -14,6 +14,8 @@ interface UserC {
     setFoldersEdit: React.Dispatch<React.SetStateAction<boolean>>;
     addEmail: boolean;
     setAddEmail: React.Dispatch<React.SetStateAction<boolean>>;
+    reconnectEmailID: string | null;
+    setReconnectEmailID: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export const UserContext = createContext<UserC | null>(null);

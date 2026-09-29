@@ -209,7 +209,7 @@ These never accept an API key. They depend on a human-bound session: billing flo
 - `GET /auth/providers`, `POST /auth/apple`, `POST /auth/google` (native-app social sign-in)
 - `POST /auth/logout`, `POST /auth/logout-all`, `GET /auth/me`, `PATCH /auth/me/onboarding`
 - `POST /auth/me/avatar`, `DELETE /auth/me/avatar`
-- `POST /emails/onboarding/oauth/start`, `POST /emails/onboarding/oauth/finish`, `POST /emails/onboarding/smtp-imap`
+- `POST /emails/onboarding/oauth/start`, `POST /emails/onboarding/oauth/reconnect/start`, `POST /emails/onboarding/oauth/finish`, `POST /emails/onboarding/smtp-imap`. Reconnect start takes `{ "account_id": "<uuid>" }` for an inactive delegated Outlook account owned by the signed-in user in the current organization. Complete the popup with the normal OAuth finish endpoint. Reconnect renews credentials only; the account remains inactive and does not start sending or warmup. A competing reconnect that changed credentials first invalidates the earlier flow.
 - `GET /oauth/authorize/details`, `POST /oauth/authorize` (the consent flow: a human approves a third-party app)
 - `GET /oauth/authorized-apps`, `DELETE /oauth/authorized-apps/:id` (apps the user has authorized)
 - `POST /getaway` (websocket bootstrap)
