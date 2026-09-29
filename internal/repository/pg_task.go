@@ -724,6 +724,15 @@ func (r *taskRepository) CreateWarmupTaskWithLock(ctx context.Context, task *Tas
 		return false, err
 	}
 
+	var denied bool
+	// Serialize task insertion with the operational deny transaction.
+	if err = tx.QueryRow(ctx, `SELECT warmup_denied FROM email_accounts WHERE id = $1 FOR SHARE`, task.EmailAccountID).Scan(&denied); err != nil {
+		return false, err
+	}
+	if denied {
+		return false, nil
+	}
+
 	var existing uuid.UUID
 	err = tx.QueryRow(ctx, `
 		SELECT id

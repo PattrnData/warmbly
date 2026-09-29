@@ -67,6 +67,7 @@ services:
   # ─── infrastructure ───────────────────────────────────────────────────
 
   postgres:
+    restart: unless-stopped
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: warmbly
@@ -82,6 +83,7 @@ services:
       retries: 10
 
   redis:
+    restart: unless-stopped
     image: redis:7-alpine
     ports: ["127.0.0.1:16379:6379"]
     volumes:
@@ -93,6 +95,7 @@ services:
       retries: 10
 
   nats:
+    restart: unless-stopped
     image: nats:2.10-alpine
     # -js: JetStream (durable streams). -m 8222: HTTP monitoring for healthcheck.
     command: ["-js", "-sd", "/data", "-m", "8222"]
@@ -108,6 +111,7 @@ services:
   # Local SMTP sink + web UI so outbound mail is visible without a real relay.
   # Point mailbox SMTP at mailpit:1025 (or use it as the notification relay).
   mailpit:
+    restart: unless-stopped
     image: axllent/mailpit:latest
     env_file:
       - ./secrets/mailpit-relay.env
@@ -141,6 +145,7 @@ services:
   # ─── application ──────────────────────────────────────────────────────
 
   backend:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: deploy/docker/backend.Dockerfile
@@ -188,6 +193,7 @@ services:
       start_period: 20s
 
   consumer:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: deploy/docker/consumer.Dockerfile
@@ -206,6 +212,7 @@ services:
   # (or run more on other machines via the SSH enrollment flow). Outbound IPs
   # belong to the mail provider, so more workers = more parallelism, not more IPs.
   worker:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: deploy/docker/worker.Dockerfile
@@ -220,6 +227,7 @@ services:
       BOX_OUTLOOK_CLIENT_ID: ${BOX_OUTLOOK_CLIENT_ID:-}
       BOX_OUTLOOK_TENANT_ID: ${BOX_OUTLOOK_TENANT_ID:-}
       BOX_OUTLOOK_CLIENT_SECRET: ${BOX_OUTLOOK_CLIENT_SECRET:-}
+      WORKER_ID: ${WORKER_ID:-d1984213-3bee-4b17-887f-1d5134b22ce8}
     volumes:
       - blobs:/data/blobs
     depends_on:
@@ -227,6 +235,7 @@ services:
       nats: { condition: service_healthy }
 
   tracking:
+    restart: unless-stopped
     build:
       context: ./tracking
       dockerfile: Dockerfile
@@ -249,6 +258,7 @@ services:
       nats: { condition: service_healthy }
 
   realtime:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: deploy/docker/realtime.Dockerfile
@@ -274,6 +284,7 @@ services:
   # the release publishes to GHCR is what runs here. For hot-reload development
   # use `make app` / docker-compose.dev.yml instead.
   web:
+    restart: unless-stopped
     build:
       context: ./web
       dockerfile: Dockerfile
@@ -289,6 +300,7 @@ services:
       backend: { condition: service_healthy }
 
   admin:
+    restart: unless-stopped
     build:
       context: ./admin
       dockerfile: Dockerfile
