@@ -475,7 +475,7 @@ Auth: **Scope** `SEND_CAMPAIGNS` · **Org permission** `send_campaigns`. Require
 
 ## Connect a mailbox (onboarding)
 
-The three onboarding routes connect a new mailbox. They are **session only (not available to API keys)** because they write user-encrypted provider refresh tokens through the SPA popup flow.
+Mailbox onboarding and delegated reconnect are **session only (not available to API keys)** because they write user-encrypted provider refresh tokens through the SPA popup flow.
 
 ### Start OAuth
 
@@ -502,11 +502,17 @@ Response:
 }
 ```
 
+### Reconnect an inactive delegated Outlook mailbox
+
+`POST /emails/onboarding/oauth/reconnect/start`
+
+Send `{ "account_id": "<existing mailbox UUID>" }` for an inactive Outlook mailbox owned by the signed-in user in the current organization. The existing mailbox must use delegated OAuth, not app-only credentials. Returns the same `{ "url", "state" }` response as Start OAuth; authorize the **same Microsoft email address** in the popup and pass its code and state to Finish OAuth. A competing reconnect or credential rotation makes the earlier flow stale; restart it. Reconnect changes credentials only; the mailbox remains inactive and does not resume sending or warmup.
+
 ### Finish OAuth
 
 `POST /emails/onboarding/oauth/finish`
 
-Completes the OAuth round trip with the authorization code and state from the provider, then creates the mailbox.
+Completes the OAuth round trip with the authorization code and state from the provider. A normal start creates a mailbox; a reconnect start renews only the existing mailbox's credentials.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -520,7 +526,7 @@ Completes the OAuth round trip with the authorization code and state from the pr
 }
 ```
 
-Response: `201 Created` with the new mailbox object (same shape as Get a mailbox).
+Response: `201 Created` with the new mailbox object for a normal start; `200 OK` with the existing inactive mailbox object for a reconnect.
 
 ### Connect SMTP/IMAP
 

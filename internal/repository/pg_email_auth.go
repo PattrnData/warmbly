@@ -186,25 +186,31 @@ func (r *emailRepository) sealOAuthTokens(accessToken, refreshToken string) (str
 	return sealedAccess, sealedRefresh, nil
 }
 
-// IsDelegatedOutlookAccount checks shape without reading or decrypting any stored token.
-func (r *emailRepository) IsDelegatedOutlookAccount(ctx context.Context, userID string, orgID, id uuid.UUID) (bool, *errx.Error) {
-	const query = `SELECT EXISTS (
-		SELECT 1 FROM email_accounts ea JOIN email_accounts_oauth o ON o.email_account_id = ea.id
+// ReconnectOutlookCredentialVersion returns a non-secret fingerprint of the
+// stored credential for an exact inactive, owner/org-scoped delegated row.
+func (r *emailRepository) ReconnectOutlookCredentialVersion(ctx context.Context, userID string, orgID, id uuid.UUID) (string, *errx.Error) {
+	const query = `SELECT md5(o.refresh_token)
+		FROM email_accounts ea JOIN email_accounts_oauth o ON o.email_account_id = ea.id
 		WHERE ea.id = $1 AND ea.user_id = $2 AND ea.organization_id = $3
 		  AND ea.provider = 'outlook' AND ea.status = 'inactive'
 		  AND o.refresh_token <> $4
-	)`
-	var ok bool
-	if err := r.DB.QueryRow(ctx, query, id, userID, orgID, models.GraphAppOnlyRefreshToken).Scan(&ok); err != nil {
+	`
+	var version string
+	if err := r.DB.QueryRow(ctx, query, id, userID, orgID, models.GraphAppOnlyRefreshToken).Scan(&version); errors.Is(err, pgx.ErrNoRows) {
+		return "", errx.ErrEmailOnboardState
+	} else if err != nil {
 		db.CaptureError(err, query, nil, "queryrow")
-		return false, errx.InternalError()
+		return "", errx.InternalError()
 	}
-	return ok, nil
+	return version, nil
 }
 
 // ReconnectOutlookToken updates credentials only for the exact inactive,
 // owner/org-scoped delegated Outlook mailbox. It does not activate it.
-func (r *emailRepository) ReconnectOutlookToken(ctx context.Context, userID string, orgID, id uuid.UUID, email, accessToken, refreshToken string, expiresAt time.Time) *errx.Error {
+func (r *emailRepository) ReconnectOutlookToken(ctx context.Context, userID string, orgID, id uuid.UUID, email, observedCredential, accessToken, refreshToken string, expiresAt time.Time) *errx.Error {
+	if observedCredential == "" {
+		return errx.ErrEmailOnboardState
+	}
 	sealedAccess, sealedRefresh, err := r.sealOAuthTokens(accessToken, refreshToken)
 	if err != nil {
 		sentry.CaptureException(err)
@@ -218,9 +224,9 @@ func (r *emailRepository) ReconnectOutlookToken(ctx context.Context, userID stri
 		  AND ea.user_id = $5 AND ea.organization_id = $6
 		  AND lower(ea.email) = lower($7) AND ea.provider = 'outlook'
 		  AND ea.status = 'inactive'
-		  AND o.refresh_token <> $8
+		  AND o.refresh_token <> $8 AND md5(o.refresh_token) = $9
 	`
-	tag, err := r.DB.Exec(ctx, query, sealedAccess, sealedRefresh, expiresAt, id, userID, orgID, email, models.GraphAppOnlyRefreshToken)
+	tag, err := r.DB.Exec(ctx, query, sealedAccess, sealedRefresh, expiresAt, id, userID, orgID, email, models.GraphAppOnlyRefreshToken, observedCredential)
 	if err != nil {
 		db.CaptureError(err, query, nil, "exec")
 		return errx.InternalError()

@@ -32,10 +32,16 @@ type reconnectRepo struct {
 func (r *reconnectRepo) Get(_ context.Context, _ string, _ string) (*models.Email, *errx.Error) {
 	return r.account, nil
 }
-func (r *reconnectRepo) IsDelegatedOutlookAccount(_ context.Context, _ string, _ uuid.UUID, _ uuid.UUID) (bool, *errx.Error) {
-	return r.delegated, nil
+func (r *reconnectRepo) ReconnectOutlookCredentialVersion(_ context.Context, _ string, _ uuid.UUID, _ uuid.UUID) (string, *errx.Error) {
+	if !r.delegated {
+		return "", errx.ErrEmailOnboardState
+	}
+	return "synthetic-version", nil
 }
-func (r *reconnectRepo) ReconnectOutlookToken(_ context.Context, _ string, _, _ uuid.UUID, _, _, _ string, _ time.Time) *errx.Error {
+func (r *reconnectRepo) ReconnectOutlookToken(_ context.Context, _ string, _, _ uuid.UUID, _, version, _, _ string, _ time.Time) *errx.Error {
+	if version != "synthetic-version" {
+		return errx.ErrEmailOnboardState
+	}
 	r.writes++
 	return nil
 }
@@ -145,7 +151,7 @@ func TestOAuthFinishReconnectBindsOwnerAndRejectsReplay(t *testing.T) {
 	ctx := context.Background()
 	save := func(state string) {
 		t.Helper()
-		if xerr := svc.saveOnboardingState(ctx, state, &models.EmailOnboardingState{UserID: "owner", OrganizationID: &org, Provider: "outlook", Nonce: state, ReconnectAccountID: &id}); xerr != nil {
+		if xerr := svc.saveOnboardingState(ctx, state, &models.EmailOnboardingState{UserID: "owner", OrganizationID: &org, Provider: "outlook", Nonce: state, ReconnectAccountID: &id, ReconnectCredentialVersion: "synthetic-version"}); xerr != nil {
 			t.Fatal(xerr)
 		}
 	}

@@ -64,19 +64,16 @@ func (s *emailService) OAuthReconnectStart(ctx context.Context, userID string, o
 	if orgID == nil || accountID == uuid.Nil {
 		return nil, errx.ErrEmailOnboardState
 	}
-	acc, xerr := s.emailRepository.Get(ctx, userID, accountID.String())
+	acc, xerr := s.emailRepository.Get(ctx, orgID.String(), accountID.String())
 	if xerr != nil {
 		return nil, xerr
 	}
 	if xerr := validateReconnectTarget(acc, userID, orgID, accountID, ""); xerr != nil {
 		return nil, xerr
 	}
-	delegated, xerr := s.emailRepository.IsDelegatedOutlookAccount(ctx, userID, *orgID, accountID)
+	version, xerr := s.emailRepository.ReconnectOutlookCredentialVersion(ctx, userID, *orgID, accountID)
 	if xerr != nil {
 		return nil, xerr
-	}
-	if !delegated {
-		return nil, errx.ErrEmailOnboardState
 	}
 	cfg, xerr := s.oauthConfigFor(models.InboxProviderOutlook)
 	if xerr != nil {
@@ -89,7 +86,7 @@ func (s *emailService) OAuthReconnectStart(ctx context.Context, userID string, o
 	}
 	if xerr := s.saveOnboardingState(ctx, state, &models.EmailOnboardingState{
 		UserID: userID, OrganizationID: orgID, Provider: string(models.InboxProviderOutlook),
-		Nonce: state, ReconnectAccountID: &accountID,
+		Nonce: state, ReconnectAccountID: &accountID, ReconnectCredentialVersion: version,
 	}); xerr != nil {
 		return nil, xerr
 	}
@@ -170,7 +167,7 @@ func (s *emailService) OAuthFinish(ctx context.Context, userID string, orgID *uu
 		if orgID == nil || sess.OrganizationID == nil || *orgID != *sess.OrganizationID || sess.Provider != string(models.InboxProviderOutlook) {
 			return nil, errx.ErrEmailOnboardState
 		}
-		reconnect, xerr = s.emailRepository.Get(ctx, userID, sess.ReconnectAccountID.String())
+		reconnect, xerr = s.emailRepository.Get(ctx, orgID.String(), sess.ReconnectAccountID.String())
 		if xerr != nil {
 			return nil, xerr
 		}
@@ -205,7 +202,7 @@ func (s *emailService) OAuthFinish(ctx context.Context, userID string, orgID *uu
 			validateReconnectTarget(reconnect, userID, orgID, *sess.ReconnectAccountID, owner.Email) != nil {
 			return nil, errx.ErrEmailOnboardState
 		}
-		if xerr := s.emailRepository.ReconnectOutlookToken(ctx, userID, *orgID, reconnect.ID, owner.Email, tok.AccessToken, tok.RefreshToken, tok.Expiry); xerr != nil {
+		if xerr := s.emailRepository.ReconnectOutlookToken(ctx, userID, *orgID, reconnect.ID, owner.Email, sess.ReconnectCredentialVersion, tok.AccessToken, tok.RefreshToken, tok.Expiry); xerr != nil {
 			return nil, xerr
 		}
 		return reconnect, nil // Intentionally no activation, worker load, or send event.
@@ -261,11 +258,14 @@ func (s *emailService) OnboardOutlookShared(ctx context.Context, userID string, 
 		return nil, xerr
 	}
 
-	parent, xerr := s.emailRepository.Get(ctx, userID, data.ParentEmailAccountID.String())
+	if orgID == nil {
+		return nil, errx.ErrEmailOnboardState
+	}
+	parent, xerr := s.emailRepository.Get(ctx, orgID.String(), data.ParentEmailAccountID.String())
 	if xerr != nil {
 		return nil, xerr
 	}
-	if parent == nil || models.InboxProvider(parent.Provider) != models.InboxProviderOutlook {
+	if parent == nil || parent.UserID != userID || models.InboxProvider(parent.Provider) != models.InboxProviderOutlook {
 		return nil, errx.New(errx.BadRequest, "parent mailbox must be a connected Outlook account")
 	}
 

@@ -165,11 +165,12 @@ type NewOutlookAppOnlyMailboxAccount struct {
 
 // EmailOnboardingState is stored in Redis for the lifetime of an OAuth round trip.
 type EmailOnboardingState struct {
-	UserID             string     `json:"user_id"`
-	OrganizationID     *uuid.UUID `json:"organization_id,omitempty"`
-	Provider           string     `json:"provider"`
-	Nonce              string     `json:"nonce"`
-	ReconnectAccountID *uuid.UUID `json:"reconnect_account_id,omitempty"`
+	UserID                     string     `json:"user_id"`
+	OrganizationID             *uuid.UUID `json:"organization_id,omitempty"`
+	Provider                   string     `json:"provider"`
+	Nonce                      string     `json:"nonce"`
+	ReconnectAccountID         *uuid.UUID `json:"reconnect_account_id,omitempty"`
+	ReconnectCredentialVersion string     `json:"reconnect_credential_version,omitempty"`
 }
 
 // EmailOnboardingStartResponse is returned from POST /emails/onboarding/oauth/start.
