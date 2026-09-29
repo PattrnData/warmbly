@@ -22,7 +22,7 @@ defmodule Realtime.MixProject do
   defp deps do
     [
       # Phoenix
-      {:phoenix, "~> 1.7"},
+      {:phoenix, "~> 1.8.9"},
       {:phoenix_pubsub, "~> 2.1"},
       {:plug_cowboy, "~> 2.7"},
       # cowlib has no patched release for EEF-CVE-2026-43966/43969; cowboy >= 2.16
