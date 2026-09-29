@@ -27,6 +27,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const [tagsEdit, setTagsEdit] = React.useState<boolean>(false);
     const [foldersEdit, setFoldersEdit] = React.useState<boolean>(false);
     const [addEmail, setAddEmail] = React.useState<boolean>(false);
+    const [reconnectEmailID, setReconnectEmailID] = React.useState<string | null>(null);
     const safeUser = useMemo((): User | null => {
         if (!user.data) return null;
         return {
@@ -105,6 +106,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             setFoldersEdit,
             addEmail,
             setAddEmail,
+            reconnectEmailID,
+            setReconnectEmailID,
         }}>
             {children}
         </UserContext.Provider>

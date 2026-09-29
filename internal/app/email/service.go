@@ -22,7 +22,7 @@ import (
 
 type EmailService interface {
 	Search(ctx context.Context, userID, search, cursor, tag, limit string, allowedAccountIDs []uuid.UUID) (*models.EmailsResult, *errx.Error)
-	Get(ctx context.Context, userID, emailAccountID string) (*models.Email, *errx.Error)
+	Get(ctx context.Context, orgID, emailAccountID string) (*models.Email, *errx.Error)
 	Update(ctx context.Context, userID, emailAccountID string, udata *models.UpdateEmail) (*models.Email, *errx.Error)
 	// BulkUpdateTags adds/removes tags across many of the user's mailboxes
 	// in one call; returns how many of the requested mailboxes were owned.
@@ -35,7 +35,8 @@ type EmailService interface {
 
 	// Onboarding flow
 	OAuthStart(ctx context.Context, userID string, orgID *uuid.UUID, provider models.InboxProvider) (*models.EmailOnboardingStartResponse, *errx.Error)
-	OAuthFinish(ctx context.Context, userID, code, state string) (*models.Email, *errx.Error)
+	OAuthReconnectStart(ctx context.Context, userID string, orgID *uuid.UUID, accountID uuid.UUID) (*models.EmailOnboardingStartResponse, *errx.Error)
+	OAuthFinish(ctx context.Context, userID string, orgID *uuid.UUID, code, state string) (*models.Email, *errx.Error)
 	OnboardOutlookShared(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewSharedOutlookMailboxAccount) (*models.Email, *errx.Error)
 	OnboardOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewOutlookAppOnlyMailboxAccount) (*models.Email, *errx.Error)
 	OnboardSMTPIMAP(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewSMTPIMAPAccount) (*models.Email, *errx.Error)

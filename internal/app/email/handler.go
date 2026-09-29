@@ -110,9 +110,16 @@ func (s *emailService) UpdateTrackingDomain(ctx context.Context, userID, emailAc
 }
 
 func (s *emailService) Delete(ctx context.Context, userID, emailAccountID string) *errx.Error {
-	account, xerr := s.emailRepository.Get(ctx, userID, emailAccountID)
-	if xerr != nil && xerr != errx.ErrNotFound {
+	id, err := uuid.Parse(emailAccountID)
+	if err != nil {
+		return errx.ErrEmailOnboardState
+	}
+	account, xerr := s.emailRepository.GetByID(ctx, id)
+	if xerr != nil {
 		return xerr
+	}
+	if account == nil || account.UserID != userID {
+		return errx.ErrEmailOnboardState
 	}
 
 	if xerr := s.emailRepository.Delete(ctx, userID, emailAccountID); xerr != nil {
@@ -160,7 +167,7 @@ func (s *emailService) removeFromAllWarmupPools(ctx context.Context, account *mo
 }
 
 func (s *emailService) canUseWarmupPool(ctx context.Context, account *models.Email) bool {
-	if account == nil || account.Status != "active" || account.OrganizationID == nil || s.featureGate == nil {
+	if account == nil || account.WarmupDenied || account.Status != "active" || account.OrganizationID == nil || s.featureGate == nil {
 		return false
 	}
 

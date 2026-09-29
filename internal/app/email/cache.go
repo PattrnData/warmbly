@@ -39,7 +39,8 @@ func (s *emailService) takeOnboardingState(ctx context.Context, state string) (*
 	if s.r == nil {
 		return nil, errx.InternalError()
 	}
-	raw, err := s.r.Get(ctx, onboardingStateKey(state)).Bytes()
+	// Atomic redemption prevents concurrent callback replay.
+	raw, err := s.r.GetDel(ctx, onboardingStateKey(state)).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, errx.ErrEmailOnboardState
@@ -47,10 +48,7 @@ func (s *emailService) takeOnboardingState(ctx context.Context, state string) (*
 		sentry.CaptureException(err)
 		return nil, errx.InternalError()
 	}
-	// Single-use: remove immediately to prevent replay even on later errors.
-	if err := s.r.Del(ctx, onboardingStateKey(state)).Err(); err != nil {
-		sentry.CaptureException(err)
-	}
+
 	var out models.EmailOnboardingState
 	if err := json.Unmarshal(raw, &out); err != nil {
 		sentry.CaptureException(err)

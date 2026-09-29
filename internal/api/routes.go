@@ -96,6 +96,7 @@ func Run(
 		// Worker mailbox-sync messageId -> internal email map (replaces the
 		// former DynamoDB EmailMessageData table). Workers read/write it here.
 		internal.GET("/email-message-map", h.InternalGetEmailMessageMap)
+		internal.GET("/warmup-deny/:emailID", h.InternalGetWarmupDeny)
 		internal.PUT("/email-message-map", h.InternalPutEmailMessageMap)
 		internal.DELETE("/email-message-map", h.InternalDeleteEmailMessageMap)
 
@@ -326,6 +327,7 @@ func Run(
 			onboardingEmails.Use(m.RateLimitMiddleware(models.RateLimitWrite))
 			{
 				onboardingEmails.POST("/oauth/start", h.StartEmailOAuth)
+				onboardingEmails.POST("/oauth/reconnect/start", m.RequireOrganization(), h.StartEmailOAuthReconnect)
 				onboardingEmails.POST("/oauth/finish", h.FinishEmailOAuth)
 				onboardingEmails.POST("/outlook-shared", h.ConnectEmailOutlookShared)
 				onboardingEmails.POST("/outlook-app-only", h.ConnectEmailOutlookAppOnly)

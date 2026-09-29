@@ -13,6 +13,7 @@ import (
 	"github.com/warmbly/warmbly/internal/config"
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/repository"
 )
 
 func (s *JobsService) HandleNewEmail(ctx context.Context, e *models.JobEventNewEmail) error {
@@ -36,6 +37,15 @@ func (s *JobsService) HandleNewEmail(ctx context.Context, e *models.JobEventNewE
 		if handled {
 			return nil // Don't add to unibox
 		}
+	}
+
+	// Microsoft 365 can strip custom X-* headers on intra-tenant delivery.
+	// Warmup sends already persist their RFC Message-ID on the originating
+	// warmup task, so use that as the durable provider-independent fallback.
+	if handled, err := s.handleWarmupEmailByMessageID(ctx, e); err != nil {
+		CaptureError(e.UserID, e.Message.EmailID, fmt.Errorf("warmup message-id handling error: %w", err))
+	} else if handled {
+		return nil // Don't add to unibox
 	}
 
 	// Normal email processing
@@ -118,6 +128,62 @@ func extractHeaderValue(msg *models.EmailMessageStoreData, headerName string) st
 }
 
 // handleWarmupEmail handles a detected warmup email
+func (s *JobsService) handleWarmupEmailByMessageID(ctx context.Context, e *models.JobEventNewEmail) (bool, error) {
+	if s.TaskRepository == nil || s.WarmupRepo == nil || e == nil || e.Message == nil {
+		return false, nil
+	}
+	task, err := s.getTaskByMessageIDVariants(ctx, e.Message.MessageID)
+	if err != nil || task == nil || task.TaskType != "warmup" {
+		return false, err
+	}
+
+	warmupTask, err := s.TaskRepository.GetWarmupTask(ctx, task.ID)
+	if err != nil {
+		return false, err
+	}
+	if warmupTask != nil && warmupTask.TargetAccountID != nil && *warmupTask.TargetAccountID != e.Message.EmailID {
+		// Same RFC Message-ID, but not the intended receiving account. Treat as
+		// normal mail rather than suppressing a potentially legitimate forward.
+		return false, nil
+	}
+
+	_ = s.WarmupRepo.RecordWarmupReceived(ctx, e.Message.EmailID, e.Message.ID, e.Message.MessageID, task.EmailAccountID)
+	if containsSpamFlag(e.Message.Flags) && s.WarmupService != nil {
+		provider, domain := s.recipientProviderDomain(ctx, e.Message.EmailID)
+		health, _ := s.WarmupService.RecordSpamPlacement(ctx, e.Message.EmailID, task.EmailAccountID, e.Message.MessageID, "message_id_match", provider, domain)
+		s.markRiskBandFromWarmupHealth(ctx, task.EmailAccountID, health)
+	}
+
+	s.performWarmupActions(ctx, e)
+	return true, nil
+}
+
+func (s *JobsService) getTaskByMessageIDVariants(ctx context.Context, messageID string) (*repository.Task, error) {
+	if s.TaskRepository == nil {
+		return nil, nil
+	}
+	for _, candidate := range messageIDVariants(messageID) {
+		task, err := s.TaskRepository.GetTaskByMessageID(ctx, candidate)
+		if err != nil || task != nil {
+			return task, err
+		}
+	}
+	return nil, nil
+}
+
+func messageIDVariants(messageID string) []string {
+	trimmed := strings.TrimSpace(messageID)
+	bare := strings.Trim(trimmed, "<>")
+	if bare == "" {
+		return nil
+	}
+	bracketed := "<" + bare + ">"
+	if trimmed == bracketed {
+		return []string{bracketed, bare}
+	}
+	return []string{trimmed, bracketed, bare}
+}
+
 func (s *JobsService) handleWarmupEmail(ctx context.Context, e *models.JobEventNewEmail, tokenStr string) (bool, error) {
 	if s.WarmupRepo == nil {
 		return false, nil
