@@ -30,6 +30,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       admin: ${{ steps.filter.outputs.admin }}
       site: ${{ steps.filter.outputs.site }}
+      docs: ${{ steps.filter.outputs.docs }}
       make: ${{ steps.filter.outputs.make }}
       ios: ${{ steps.filter.outputs.ios }}
     steps:
@@ -54,6 +55,8 @@ jobs:
               - 'admin/**'
             site:
               - 'site/**'
+            docs:
+              - 'docs/**'
             make:
               - 'integrations/make/**'
             ios:
@@ -202,6 +205,41 @@ jobs:
         # Astro project; build catches type errors, broken imports,
         # missing assets. No separate lint/typecheck script is wired
         # in package.json today.
+        run: pnpm build
+
+  docs-ci:
+    name: Docs CI
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: docs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm types:check
+
+      - name: Build
         run: pnpm build
 
   make-ci:
@@ -385,7 +423,7 @@ jobs:
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [changes, go-ci, web-ci, admin-ci, site-ci, make-ci, rust-ci, elixir-ci, ios-ci, frontend-images, security]
+    needs: [changes, go-ci, web-ci, admin-ci, site-ci, docs-ci, make-ci, rust-ci, elixir-ci, ios-ci, frontend-images, security]
     if: always()
     steps:
       - name: Check CI status
@@ -394,6 +432,7 @@ jobs:
              [[ "${{ needs.web-ci.result }}" == "failure" ]] || \
              [[ "${{ needs.admin-ci.result }}" == "failure" ]] || \
              [[ "${{ needs.site-ci.result }}" == "failure" ]] || \
+             [[ "${{ needs.docs-ci.result }}" == "failure" ]] || \
              [[ "${{ needs.make-ci.result }}" == "failure" ]] || \
              [[ "${{ needs.frontend-images.result }}" == "failure" ]] || \
              [[ "${{ needs.rust-ci.result }}" == "failure" ]] || \
