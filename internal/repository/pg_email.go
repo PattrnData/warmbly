@@ -84,6 +84,8 @@ type EmailRepository interface {
 	NewOauthAccount(ctx context.Context, userID string, data models.NewOauthAccount) (*models.Email, *errx.Error)
 	NewSMTPIMAPAccount(ctx context.Context, userID string, data models.NewSMTPIMAPAccount) (*models.Email, *errx.Error)
 	RefreshBoxToken(ctx context.Context, id uuid.UUID, accessToken, refreshToken string, expiresAt time.Time) error
+	ReconnectOutlookToken(ctx context.Context, userID string, orgID, id uuid.UUID, email, accessToken, refreshToken string, expiresAt time.Time) *errx.Error
+	IsDelegatedOutlookAccount(ctx context.Context, userID string, orgID, id uuid.UUID) (bool, *errx.Error)
 
 	// ExistsForUser checks whether the given (user_id, email) pair is already connected.
 	ExistsForUser(ctx context.Context, userID, email string) (bool, *errx.Error)
@@ -209,6 +211,11 @@ func (r *emailRepository) NewOauthAccount(ctx context.Context, userID string, da
 		sentry.CaptureException(errors.New("invalid inbox provider"))
 		return nil, errx.InternalError()
 	}
+	accessToken, refreshToken, sealErr := r.sealOAuthTokens(data.AccessToken, data.RefreshToken)
+	if sealErr != nil {
+		sentry.CaptureException(sealErr)
+		return nil, errx.InternalError()
+	}
 
 	tx, err := r.DB.Begin(ctx)
 	if err != nil {
@@ -262,8 +269,8 @@ func (r *emailRepository) NewOauthAccount(ctx context.Context, userID string, da
 
 	params = []any{
 		id,
-		data.AccessToken,
-		data.RefreshToken,
+		accessToken,
+		refreshToken,
 		data.ExpiresAt,
 	}
 
@@ -273,8 +280,8 @@ func (r *emailRepository) NewOauthAccount(ctx context.Context, userID string, da
 		params...,
 	)
 	if err != nil {
-		db.CaptureError(err, query, params, "exec")
-		errx.InternalError()
+		db.CaptureError(err, query, nil, "exec")
+		return nil, errx.InternalError()
 	}
 
 	if err := tx.Commit(ctx); err != nil {

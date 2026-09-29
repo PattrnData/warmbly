@@ -326,6 +326,7 @@ func Run(
 			onboardingEmails.Use(m.RateLimitMiddleware(models.RateLimitWrite))
 			{
 				onboardingEmails.POST("/oauth/start", h.StartEmailOAuth)
+				onboardingEmails.POST("/oauth/reconnect/start", m.RequireOrganization(), h.StartEmailOAuthReconnect)
 				onboardingEmails.POST("/oauth/finish", h.FinishEmailOAuth)
 				onboardingEmails.POST("/outlook-shared", h.ConnectEmailOutlookShared)
 				onboardingEmails.POST("/outlook-app-only", h.ConnectEmailOutlookAppOnly)
