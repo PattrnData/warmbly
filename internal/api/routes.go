@@ -96,6 +96,7 @@ func Run(
 		// Worker mailbox-sync messageId -> internal email map (replaces the
 		// former DynamoDB EmailMessageData table). Workers read/write it here.
 		internal.GET("/email-message-map", h.InternalGetEmailMessageMap)
+		internal.GET("/warmup-deny/:emailID", h.InternalGetWarmupDeny)
 		internal.PUT("/email-message-map", h.InternalPutEmailMessageMap)
 		internal.DELETE("/email-message-map", h.InternalDeleteEmailMessageMap)
 
