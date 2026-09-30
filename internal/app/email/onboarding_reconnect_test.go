@@ -143,7 +143,10 @@ func TestOAuthFinishReconnectBindsOwnerAndRejectsReplay(t *testing.T) {
 		if r.URL.Host != "graph.microsoft.com" {
 			t.Errorf("unexpected request to %s", r.URL.Host)
 		}
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"mail":"` + owner + `"}`)), Request: r}, nil
+		if r.URL.Path != "/v1.0/me" {
+			return &http.Response{StatusCode: http.StatusForbidden, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{}`)), Request: r}, nil
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"mail":"` + owner + `"}`)), Request: r}, nil
 	})}
 	org, id := uuid.New(), uuid.New()
 	repo := &reconnectRepo{account: &models.Email{ID: id, UserID: "owner", OrganizationID: &org, Email: "owner@example.test", Provider: "outlook", Status: "inactive"}, delegated: true}
@@ -186,6 +189,66 @@ func TestOAuthFinishReconnectBindsOwnerAndRejectsReplay(t *testing.T) {
 	}
 	if repo.writes != 1 {
 		t.Fatalf("writes after valid callback and replay: %d", repo.writes)
+	}
+}
+
+func TestOAuthFinishReconnectSharedOutlookDelegate(t *testing.T) {
+	server, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
+	defer client.Close()
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"synthetic-access","refresh_token":"synthetic-refresh","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenServer.Close()
+	oldClient := httpClient
+	defer func() { httpClient = oldClient }()
+	mailboxAccessible := false
+	httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != "graph.microsoft.com" || r.Header.Get("Authorization") != "Bearer synthetic-access" {
+			t.Errorf("unexpected Graph request: host=%s auth=%s", r.URL.Host, r.Header.Get("Authorization"))
+		}
+		status, body := http.StatusOK, `{"mail":"delegate@example.test"}`
+		switch r.URL.EscapedPath() {
+		case "/v1.0/me":
+		case "/v1.0/users/shared@example.test/mailFolders/inbox":
+			if !mailboxAccessible {
+				status = http.StatusForbidden
+				body = `{}`
+			} else {
+				body = `{"id":"inbox-id"}`
+			}
+		default:
+			t.Errorf("unexpected Graph path: %s", r.URL.EscapedPath())
+			status = http.StatusNotFound
+		}
+		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	})}
+	org, id := uuid.New(), uuid.New()
+	repo := &reconnectRepo{account: &models.Email{ID: id, UserID: "owner", OrganizationID: &org, Email: "shared@example.test", Provider: "outlook", Status: "inactive"}, delegated: true}
+	svc := &emailService{emailRepository: repo, r: &cache.Cache{Client: client}, oauthInbox: &config.Oauth2Inbox{Outlook: &oauth2.Config{ClientID: "synthetic", ClientSecret: "synthetic", Endpoint: oauth2.Endpoint{TokenURL: tokenServer.URL}}}}
+	ctx := context.Background()
+	save := func(state string) {
+		t.Helper()
+		if xerr := svc.saveOnboardingState(ctx, state, &models.EmailOnboardingState{UserID: "owner", OrganizationID: &org, Provider: "outlook", Nonce: state, ReconnectAccountID: &id, ReconnectCredentialVersion: "synthetic-version"}); xerr != nil {
+			t.Fatal(xerr)
+		}
+	}
+	save("denied-shared")
+	if _, xerr := svc.OAuthFinish(ctx, "owner", &org, "synthetic-code", "denied-shared"); xerr == nil || repo.writes != 0 {
+		t.Fatalf("inaccessible shared mailbox accepted: err=%v writes=%d", xerr, repo.writes)
+	}
+	mailboxAccessible = true
+	save("allowed-shared")
+	if _, xerr := svc.OAuthFinish(ctx, "owner", &org, "synthetic-code", "allowed-shared"); xerr != nil || repo.writes != 1 {
+		t.Fatalf("accessible shared mailbox rejected: err=%v writes=%d", xerr, repo.writes)
+	}
+	if _, xerr := svc.OAuthFinish(ctx, "owner", &org, "synthetic-code", "allowed-shared"); xerr == nil || repo.writes != 1 {
+		t.Fatalf("shared replay accepted: err=%v writes=%d", xerr, repo.writes)
 	}
 }
 
