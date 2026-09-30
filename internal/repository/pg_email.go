@@ -86,6 +86,8 @@ type EmailRepository interface {
 	RefreshBoxToken(ctx context.Context, id uuid.UUID, accessToken, refreshToken string, expiresAt time.Time) error
 	ReconnectOutlookToken(ctx context.Context, userID string, orgID, id uuid.UUID, email, observedCredential, accessToken, refreshToken string, expiresAt time.Time) *errx.Error
 	ReconnectOutlookCredentialVersion(ctx context.Context, userID string, orgID, id uuid.UUID) (string, *errx.Error)
+	OutlookAppOnlyConversionVersion(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email string) (string, *errx.Error)
+	ConvertOutlookAppOnly(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email, observedCredential string) *errx.Error
 
 	// ExistsForUser checks whether the given (user_id, email) pair is already connected.
 	ExistsForUser(ctx context.Context, userID, email string) (bool, *errx.Error)

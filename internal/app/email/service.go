@@ -39,6 +39,7 @@ type EmailService interface {
 	OAuthFinish(ctx context.Context, userID string, orgID *uuid.UUID, code, state string) (*models.Email, *errx.Error)
 	OnboardOutlookShared(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewSharedOutlookMailboxAccount) (*models.Email, *errx.Error)
 	OnboardOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewOutlookAppOnlyMailboxAccount) (*models.Email, *errx.Error)
+	ConvertOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, id, parentID uuid.UUID, email string, tenantID uuid.UUID) (*models.Email, *errx.Error)
 	OnboardSMTPIMAP(ctx context.Context, userID string, orgID *uuid.UUID, data *models.NewSMTPIMAPAccount) (*models.Email, *errx.Error)
 
 	// Optional: wire in the webhook dispatcher after construction. Once

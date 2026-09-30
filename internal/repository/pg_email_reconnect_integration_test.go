@@ -151,4 +151,96 @@ func TestReconnectRepositoryPostgres(t *testing.T) {
 	if _, xerr := repo.ReconnectOutlookCredentialVersion(ctx, user.String(), org, id); xerr != errx.ErrEmailOnboardState {
 		t.Fatal("app-only account accepted for delegated reconnect")
 	}
+
+	// An inactive shared sender must retain its ID/history while only its
+	// credential row changes. The active delegate holds the identical sealed
+	// credential copied by the existing shared-mailbox onboarding path.
+	parentID, sharedID := uuid.New(), uuid.New()
+	seed(parentID, user, org, "delegate@example.test")
+	seed(sharedID, user, org, "shared@example.test")
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts SET status='active' WHERE id=$1`, parentID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts_oauth SET access_token=p.access_token, refresh_token=p.refresh_token
+		FROM email_accounts_oauth p WHERE email_accounts_oauth.email_account_id=$1 AND p.email_account_id=$2`, sharedID, parentID); err != nil {
+		t.Fatal(err)
+	}
+	version, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, parentID, "shared@example.test")
+	if xerr != nil || version == "" {
+		t.Fatalf("eligible shared sender: %v", xerr)
+	}
+	if _, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, otherID, "shared@example.test"); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("unrelated parent accepted as credential provenance")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts_oauth SET access_token='different' WHERE email_account_id=$1`, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	if _, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, parentID, "shared@example.test"); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("different sealed access credential accepted as parent provenance")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, parentID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("stale access-token preimage converted")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts_oauth SET access_token=p.access_token
+		FROM email_accounts_oauth p WHERE email_accounts_oauth.email_account_id=$1 AND p.email_account_id=$2`, sharedID, parentID); err != nil {
+		t.Fatal(err)
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, parentID, "delegate@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("wrong expected target email accepted")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts SET status='active' WHERE id=$1`, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, parentID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("active target converted")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts SET status='inactive' WHERE id=$1`, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	results := make(chan *errx.Error, 2)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results <- repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, parentID, "shared@example.test", version)
+		}()
+	}
+	wg.Wait()
+	close(results)
+	success, stale = 0, 0
+	for result := range results {
+		switch result {
+		case nil:
+			success++
+		case errx.ErrEmailOnboardState:
+			stale++
+		default:
+			t.Fatalf("unexpected conversion error: %v", result)
+		}
+	}
+	if success != 1 || stale != 1 {
+		t.Fatalf("concurrent conversions: success=%d stale=%d; want 1/1", success, stale)
+	}
+	var targetToken, targetAccess, targetStatus, parentToken, parentStatus string
+	if err := pool.QueryRow(ctx, `SELECT o.refresh_token,o.access_token,ea.status FROM email_accounts_oauth o JOIN email_accounts ea ON ea.id=o.email_account_id WHERE ea.id=$1`, sharedID).Scan(&targetToken, &targetAccess, &targetStatus); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT o.refresh_token,ea.status FROM email_accounts_oauth o JOIN email_accounts ea ON ea.id=o.email_account_id WHERE ea.id=$1`, parentID).Scan(&parentToken, &parentStatus); err != nil {
+		t.Fatal(err)
+	}
+	if targetToken != models.GraphAppOnlyRefreshToken || targetAccess != "" || targetStatus != "inactive" || parentToken == targetToken || parentStatus != "active" {
+		t.Fatal("conversion changed account status/parent or failed to set exact sentinel")
+	}
+	if _, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, parentID, "shared@example.test"); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("converted sender accepted for replay")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, otherUser.String(), org, sharedID, parentID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("cross-owner conversion accepted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), otherOrg, sharedID, parentID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("cross-org conversion accepted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, otherID, parentID, "other@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("unrelated mailbox conversion accepted")
+	}
 }

@@ -236,3 +236,57 @@ func (r *emailRepository) ReconnectOutlookToken(ctx context.Context, userID stri
 	}
 	return nil
 }
+
+// OutlookAppOnlyConversionVersion binds an inactive shared sender to its
+// active, same-owner delegate: the sealed credential must be an exact copy.
+// Only an opaque version leaves the repository; no token is returned/logged.
+func (r *emailRepository) OutlookAppOnlyConversionVersion(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email string) (string, *errx.Error) {
+	const query = `SELECT md5(o.refresh_token || ':' || o.access_token)
+		FROM email_accounts ea
+		JOIN email_accounts_oauth o ON o.email_account_id = ea.id
+		JOIN email_accounts p ON p.id = $4 AND p.user_id = ea.user_id AND p.organization_id = ea.organization_id
+		  AND p.provider = 'outlook' AND p.status = 'active' AND lower(p.email) <> lower(ea.email)
+		JOIN email_accounts_oauth po ON po.email_account_id = p.id AND po.refresh_token = o.refresh_token AND po.access_token = o.access_token
+		WHERE ea.id = $1 AND ea.user_id = $2 AND ea.organization_id = $3
+		  AND lower(ea.email) = lower($5) AND ea.provider = 'outlook' AND ea.status = 'inactive'
+		  AND ea.id <> p.id AND o.refresh_token <> $6 AND o.refresh_token <> ''
+		  AND o.access_token <> ''`
+	var version string
+	if err := r.DB.QueryRow(ctx, query, id, userID, orgID, parentID, email, models.GraphAppOnlyRefreshToken).Scan(&version); errors.Is(err, pgx.ErrNoRows) {
+		return "", errx.ErrEmailOnboardState
+	} else if err != nil {
+		db.CaptureError(err, query, nil, "queryrow")
+		return "", errx.InternalError()
+	}
+	return version, nil
+}
+
+// ConvertOutlookAppOnly is one atomic, exact-row credential-mode CAS. It does
+// not touch the mailbox row/status/history or create a duplicate. PostgreSQL
+// rolls back the statement on error; a later operational rollback requires an
+// independently approved encrypted preimage and exact-row reverse CAS.
+func (r *emailRepository) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email, observedCredential string) *errx.Error {
+	if observedCredential == "" || id == uuid.Nil || parentID == uuid.Nil || id == parentID {
+		return errx.ErrEmailOnboardState
+	}
+	const query = `UPDATE email_accounts_oauth o
+		SET access_token = '', refresh_token = $1, expires_at = now()
+		FROM email_accounts ea, email_accounts p, email_accounts_oauth po
+		WHERE o.email_account_id = ea.id AND ea.id = $2
+		  AND ea.user_id = $3 AND ea.organization_id = $4
+		  AND lower(ea.email) = lower($5) AND ea.provider = 'outlook' AND ea.status = 'inactive'
+		  AND p.id = $6 AND p.id <> ea.id AND p.user_id = ea.user_id AND p.organization_id = ea.organization_id
+		  AND p.provider = 'outlook' AND p.status = 'active' AND lower(p.email) <> lower(ea.email)
+		  AND po.email_account_id = p.id AND po.refresh_token = o.refresh_token AND po.access_token = o.access_token
+		  AND o.refresh_token <> $1 AND o.refresh_token <> '' AND o.access_token <> ''
+		  AND md5(o.refresh_token || ':' || o.access_token) = $7`
+	tag, err := r.DB.Exec(ctx, query, models.GraphAppOnlyRefreshToken, id, userID, orgID, email, parentID, observedCredential)
+	if err != nil {
+		db.CaptureError(err, query, nil, "exec")
+		return errx.InternalError()
+	}
+	if tag.RowsAffected() != 1 {
+		return errx.ErrEmailOnboardState
+	}
+	return nil
+}

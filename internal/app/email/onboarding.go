@@ -2,6 +2,7 @@ package email
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -393,6 +394,108 @@ func (s *emailService) OnboardOutlookAppOnly(ctx context.Context, userID string,
 		s.loadAccountBestEffort(ctx, acc.ID)
 	}
 	return acc, xerr
+}
+
+// ConvertOutlookAppOnly changes only the credential mode of one existing
+// inactive shared sender. It never creates/activates a mailbox, loads a worker,
+// or emits a connected event; those steps require a separate production gate.
+func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, id, parentID uuid.UUID, email string, tenantID uuid.UUID) (*models.Email, *errx.Error) {
+	email = strings.TrimSpace(email)
+	if orgID == nil || !approvedSharedSenderConversionTarget(id) || parentID == uuid.Nil || id == parentID || tenantID == uuid.Nil || email == "" {
+		return nil, errx.ErrEmailOnboardState
+	}
+	acc, xerr := s.emailRepository.Get(ctx, orgID.String(), id.String())
+	if xerr != nil {
+		return nil, xerr
+	}
+	if xerr := validateReconnectTarget(acc, userID, orgID, id, email); xerr != nil {
+		return nil, xerr
+	}
+	parent, xerr := s.emailRepository.Get(ctx, orgID.String(), parentID.String())
+	if xerr != nil {
+		return nil, xerr
+	}
+	if parent == nil || parent.ID != parentID || parent.UserID != userID || parent.OrganizationID == nil || *parent.OrganizationID != *orgID ||
+		parent.Provider != "outlook" || parent.Status != "active" || strings.EqualFold(parent.Email, acc.Email) {
+		return nil, errx.ErrEmailOnboardState
+	}
+	if s.oauthInbox == nil || s.oauthInbox.OutlookAppOnly == nil || s.oauthInbox.OutlookAppOnly.ClientID == "" || s.oauthInbox.OutlookAppOnly.ClientSecret == "" {
+		return nil, errx.ErrEmailOnboardExchange
+	}
+	// Do not silently use the config fallback to /common or another tenant.
+	tokenURL, err := url.Parse(s.oauthInbox.OutlookAppOnly.TokenURL)
+	if err != nil || !strings.HasSuffix(tokenURL.Path, "/oauth2/v2.0/token") ||
+		!strings.HasSuffix(strings.TrimSuffix(tokenURL.Path, "/oauth2/v2.0/token"), "/"+tenantID.String()) {
+		return nil, errx.ErrEmailOnboardState
+	}
+	version, xerr := s.emailRepository.OutlookAppOnlyConversionVersion(ctx, userID, *orgID, id, parentID, email)
+	if xerr != nil {
+		return nil, xerr
+	}
+	tok, err := s.oauthInbox.OutlookAppOnly.Token(ctx)
+	if err != nil || tok.AccessToken == "" {
+		return nil, errx.ErrEmailOnboardExchange
+	}
+	if !appTokenMatchesTenantAndRoles(tok.AccessToken, tenantID, s.oauthInbox.OutlookAppOnly.ClientID) {
+		return nil, errx.ErrEmailOnboardState
+	}
+	if xerr := validateOutlookSharedMailboxAccess(ctx, tok.AccessToken, acc.Email); xerr != nil {
+		return nil, xerr
+	}
+	if xerr := s.emailRepository.ConvertOutlookAppOnly(ctx, userID, *orgID, id, parentID, email, version); xerr != nil {
+		return nil, xerr
+	}
+	return acc, nil
+}
+
+// Incident-scoped allowlist, not a general-purpose auth-mode switch. Remove
+// the helper and list after the separately approved exact-four recovery.
+func approvedSharedSenderConversionTarget(id uuid.UUID) bool {
+	switch id.String() {
+	case "af571c6e-e6f0-4cb9-90fe-a7d5105babd7",
+		"e165f276-cc96-4907-991a-a7b860e1ed6f",
+		"e7ce131c-4a6f-4529-9bd4-9f88bfd99208",
+		"ea4b17db-80b9-445b-9c28-8d67679dc4a5":
+		return true
+	default:
+		return false
+	}
+}
+
+// Inspect claims only on the short-lived token from the configured client-
+// credential endpoint; Graph verifies its signature on the inbox GET.
+// A 200 read alone cannot prove send, so require the Mail.Send app role too.
+func appTokenMatchesTenantAndRoles(token string, tenantID uuid.UUID, clientID string) bool {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return false
+	}
+	data, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return false
+	}
+	var claims struct {
+		Tenant   string   `json:"tid"`
+		Client   string   `json:"appid"`
+		AZP      string   `json:"azp"`
+		Audience string   `json:"aud"`
+		Roles    []string `json:"roles"`
+	}
+	if json.Unmarshal(data, &claims) != nil || !strings.EqualFold(claims.Tenant, tenantID.String()) ||
+		(claims.Client != clientID && claims.AZP != clientID) ||
+		(claims.Audience != "https://graph.microsoft.com" && claims.Audience != "00000003-0000-0000-c000-000000000000") {
+		return false
+	}
+	var read, send bool
+	for _, role := range claims.Roles {
+		if role == "Mail.ReadWrite" {
+			read = true
+		}
+		if role == "Mail.Send" {
+			send = true
+		}
+	}
+	return read && send
 }
 
 // OnboardSMTPIMAP validates the supplied SMTP/IMAP credentials against a live worker, then
