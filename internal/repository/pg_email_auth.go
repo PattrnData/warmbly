@@ -241,12 +241,12 @@ func (r *emailRepository) ReconnectOutlookToken(ctx context.Context, userID stri
 // active, same-owner delegate: the sealed credential must be an exact copy.
 // Only an opaque version leaves the repository; no token is returned/logged.
 func (r *emailRepository) OutlookAppOnlyConversionVersion(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email string) (string, *errx.Error) {
-	const query = `SELECT md5(o.refresh_token)
+	const query = `SELECT md5(o.refresh_token || ':' || o.access_token)
 		FROM email_accounts ea
 		JOIN email_accounts_oauth o ON o.email_account_id = ea.id
 		JOIN email_accounts p ON p.id = $4 AND p.user_id = ea.user_id AND p.organization_id = ea.organization_id
 		  AND p.provider = 'outlook' AND p.status = 'active' AND lower(p.email) <> lower(ea.email)
-		JOIN email_accounts_oauth po ON po.email_account_id = p.id AND po.refresh_token = o.refresh_token
+		JOIN email_accounts_oauth po ON po.email_account_id = p.id AND po.refresh_token = o.refresh_token AND po.access_token = o.access_token
 		WHERE ea.id = $1 AND ea.user_id = $2 AND ea.organization_id = $3
 		  AND lower(ea.email) = lower($5) AND ea.provider = 'outlook' AND ea.status = 'inactive'
 		  AND ea.id <> p.id AND o.refresh_token <> $6 AND o.refresh_token <> ''
@@ -277,9 +277,9 @@ func (r *emailRepository) ConvertOutlookAppOnly(ctx context.Context, userID stri
 		  AND lower(ea.email) = lower($5) AND ea.provider = 'outlook' AND ea.status = 'inactive'
 		  AND p.id = $6 AND p.id <> ea.id AND p.user_id = ea.user_id AND p.organization_id = ea.organization_id
 		  AND p.provider = 'outlook' AND p.status = 'active' AND lower(p.email) <> lower(ea.email)
-		  AND po.email_account_id = p.id AND po.refresh_token = o.refresh_token
+		  AND po.email_account_id = p.id AND po.refresh_token = o.refresh_token AND po.access_token = o.access_token
 		  AND o.refresh_token <> $1 AND o.refresh_token <> '' AND o.access_token <> ''
-		  AND md5(o.refresh_token) = $7`
+		  AND md5(o.refresh_token || ':' || o.access_token) = $7`
 	tag, err := r.DB.Exec(ctx, query, models.GraphAppOnlyRefreshToken, id, userID, orgID, email, parentID, observedCredential)
 	if err != nil {
 		db.CaptureError(err, query, nil, "exec")

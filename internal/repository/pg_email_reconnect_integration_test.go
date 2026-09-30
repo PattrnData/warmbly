@@ -172,6 +172,19 @@ func TestReconnectRepositoryPostgres(t *testing.T) {
 	if _, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, otherID, "shared@example.test"); xerr != errx.ErrEmailOnboardState {
 		t.Fatal("unrelated parent accepted as credential provenance")
 	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts_oauth SET access_token='different' WHERE email_account_id=$1`, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	if _, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, parentID, "shared@example.test"); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("different sealed access credential accepted as parent provenance")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, parentID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("stale access-token preimage converted")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts_oauth SET access_token=p.access_token
+		FROM email_accounts_oauth p WHERE email_accounts_oauth.email_account_id=$1 AND p.email_account_id=$2`, sharedID, parentID); err != nil {
+		t.Fatal(err)
+	}
 	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, parentID, "delegate@example.test", version); xerr != errx.ErrEmailOnboardState {
 		t.Fatal("wrong expected target email accepted")
 	}

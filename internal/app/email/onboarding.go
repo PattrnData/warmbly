@@ -401,7 +401,7 @@ func (s *emailService) OnboardOutlookAppOnly(ctx context.Context, userID string,
 // or emits a connected event; those steps require a separate production gate.
 func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, id, parentID uuid.UUID, email string, tenantID uuid.UUID) (*models.Email, *errx.Error) {
 	email = strings.TrimSpace(email)
-	if orgID == nil || id == uuid.Nil || parentID == uuid.Nil || id == parentID || tenantID == uuid.Nil || email == "" {
+	if orgID == nil || !approvedSharedSenderConversionTarget(id) || parentID == uuid.Nil || id == parentID || tenantID == uuid.Nil || email == "" {
 		return nil, errx.ErrEmailOnboardState
 	}
 	acc, xerr := s.emailRepository.Get(ctx, orgID.String(), id.String())
@@ -446,6 +446,20 @@ func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string,
 		return nil, xerr
 	}
 	return acc, nil
+}
+
+// Incident-scoped allowlist, not a general-purpose auth-mode switch. Remove
+// the helper and list after the separately approved exact-four recovery.
+func approvedSharedSenderConversionTarget(id uuid.UUID) bool {
+	switch id.String() {
+	case "af571c6e-e6f0-4cb9-90fe-a7d5105babd7",
+		"e165f276-cc96-4907-991a-a7b860e1ed6f",
+		"e7ce131c-4a6f-4529-9bd4-9f88bfd99208",
+		"ea4b17db-80b9-445b-9c28-8d67679dc4a5":
+		return true
+	default:
+		return false
+	}
 }
 
 // Inspect claims only on the short-lived token from the configured client-
