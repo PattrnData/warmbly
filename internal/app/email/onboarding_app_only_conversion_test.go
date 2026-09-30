@@ -69,7 +69,7 @@ func TestAppTokenMatchesTenantAndRoles(t *testing.T) {
 }
 
 func TestConvertOutlookAppOnlyExactInactiveSharedSender(t *testing.T) {
-	org, targetID, parentID, tenantID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	org, targetID, parentID, tenantID := uuid.New(), uuid.MustParse("af571c6e-e6f0-4cb9-90fe-a7d5105babd7"), uuid.New(), uuid.New()
 	target := &models.Email{ID: targetID, UserID: "owner", OrganizationID: &org, Email: "shared@example.test", Provider: "outlook", Status: "inactive"}
 	parent := &models.Email{ID: parentID, UserID: "owner", OrganizationID: &org, Email: "delegate@example.test", Provider: "outlook", Status: "active"}
 	repo := &conversionRepo{target: target, parent: parent}
@@ -106,6 +106,7 @@ func TestConvertOutlookAppOnlyExactInactiveSharedSender(t *testing.T) {
 		{"wrong user", "intruder", target.Email, &org, targetID, parentID},
 		{"wrong org", "owner", target.Email, ptrUUID(uuid.New()), targetID, parentID},
 		{"wrong id", "owner", target.Email, &org, uuid.New(), parentID},
+		{"quarantined fifth", "owner", target.Email, &org, uuid.MustParse("a5f28cfb-b10f-4597-b445-28e647e0dd92"), parentID},
 		{"wrong email", "owner", "another@example.test", &org, targetID, parentID},
 		{"no parent", "owner", target.Email, &org, targetID, uuid.Nil},
 		{"self parent", "owner", target.Email, &org, targetID, targetID},
