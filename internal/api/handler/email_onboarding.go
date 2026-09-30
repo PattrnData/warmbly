@@ -69,6 +69,14 @@ type OnboardingOutlookAppOnlyRequest struct {
 	Name  string `json:"name"`
 }
 
+// Explicitly identify the existing sender, original delegate and tenant.
+type OutlookAppOnlyConversionRequest struct {
+	AccountID            string `json:"account_id" binding:"required"`
+	ParentEmailAccountID string `json:"parent_email_account_id" binding:"required"`
+	Email                string `json:"email" binding:"required"`
+	TenantID             string `json:"tenant_id" binding:"required"`
+}
+
 func (h *Handler) StartEmailOAuth(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	orgID := middleware.GetOrganizationID(c)
@@ -180,6 +188,38 @@ func (h *Handler) ConnectEmailOutlookAppOnly(c *gin.Context) {
 	})
 
 	c.JSON(http.StatusCreated, acc)
+}
+
+func (h *Handler) ConvertEmailOutlookAppOnly(c *gin.Context) {
+	var req OutlookAppOnlyConversionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errx.Handle(c, errx.ErrInvalid)
+		return
+	}
+	id, err := uuid.Parse(req.AccountID)
+	if err != nil {
+		errx.Handle(c, errx.ErrUuid)
+		return
+	}
+	parentID, err := uuid.Parse(req.ParentEmailAccountID)
+	if err != nil {
+		errx.Handle(c, errx.ErrUuid)
+		return
+	}
+	tenantID, err := uuid.Parse(req.TenantID)
+	if err != nil {
+		errx.Handle(c, errx.ErrUuid)
+		return
+	}
+	acc, xerr := h.EmailService.ConvertOutlookAppOnly(c.Request.Context(), middleware.GetUserID(c), middleware.GetOrganizationID(c), id, parentID, req.Email, tenantID)
+	if xerr != nil {
+		errx.Handle(c, xerr)
+		return
+	}
+	h.auditOrg(c, models.AuditActionUpdate, models.AuditEntityEmailAccount, &acc.ID, nil, map[string]string{
+		"auth_mode": "graph_app_only", "parent_email_account_id": parentID.String(), "tenant_id": tenantID.String(),
+	})
+	c.JSON(http.StatusOK, acc) // Existing inactive row; no sender activation.
 }
 
 func (h *Handler) ConnectEmailSMTPIMAP(c *gin.Context) {
