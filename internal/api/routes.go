@@ -331,6 +331,7 @@ func Run(
 				onboardingEmails.POST("/oauth/finish", h.FinishEmailOAuth)
 				onboardingEmails.POST("/outlook-shared", h.ConnectEmailOutlookShared)
 				onboardingEmails.POST("/outlook-app-only", h.ConnectEmailOutlookAppOnly)
+				onboardingEmails.POST("/outlook-app-only/convert", m.RequireOrganization(), m.RequireAccess(models.PermManageEmails, models.APIPermWriteEmails), h.ConvertEmailOutlookAppOnly)
 				onboardingEmails.POST("/smtp-imap", h.ConnectEmailSMTPIMAP)
 			}
 
