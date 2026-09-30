@@ -79,6 +79,11 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 	if account == nil {
 		return errx.ErrNotFound
 	}
+	if account.WarmupDenied {
+		_ = s.taskRepo.UpdateTaskStatus(ctx, taskID, "cancelled")
+		executionStatus = "completed"
+		return nil
+	}
 	// Keep the warmup chain alive while the mailbox is actively warming OR
 	// while it backs a live campaign (the low-volume health-check lane). Once
 	// neither holds, the chain is allowed to wind down.
@@ -294,6 +299,17 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 		log.Warn().Err(err).Str("task_id", taskID.String()).Str("email_account_id", account.ID.String()).Msg("Failed to create warmup token")
 	} else {
 		warmupTokenStr = warmupToken.String()
+	}
+
+	// Re-read immediately before dispatch if an operator denied warmup during preparation.
+	current, xerr := s.emailRepo.GetByID(ctx, account.ID)
+	if xerr != nil {
+		return xerr
+	}
+	if current == nil || current.WarmupDenied {
+		_ = s.taskRepo.UpdateTaskStatus(ctx, taskID, "cancelled")
+		executionStatus = "completed"
+		return nil
 	}
 
 	// STEP 10: Send warmup email to worker via Kafka
@@ -662,6 +678,13 @@ func (s *tasksService) EnsureWarmupScheduled(ctx context.Context, accountID uuid
 
 // createWarmupTask creates a new warmup task in GCP Cloud Tasks
 func (s *tasksService) createWarmupTask(ctx context.Context, accountID uuid.UUID, scheduleTime time.Time) error {
+	account, xerr := s.emailRepo.GetByID(ctx, accountID)
+	if xerr != nil {
+		return xerr
+	}
+	if account == nil || account.WarmupDenied {
+		return nil
+	}
 	// Create task in database
 	newTaskID := uuid.New()
 	newTask := &Task{

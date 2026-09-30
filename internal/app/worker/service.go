@@ -18,6 +18,7 @@ import (
 )
 
 type WorkerService struct {
+	WarmupDenyChecker         WarmupDenyChecker
 	ID                        string
 	CipherService             cipher.CipherService
 	Bus                       eventbus.EventBus

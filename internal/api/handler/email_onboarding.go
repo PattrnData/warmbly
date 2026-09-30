@@ -15,6 +15,29 @@ type OnboardingOAuthStartRequest struct {
 	Provider string `json:"provider"`
 }
 
+type OnboardingOAuthReconnectRequest struct {
+	AccountID string `json:"account_id" binding:"required"`
+}
+
+func (h *Handler) StartEmailOAuthReconnect(c *gin.Context) {
+	var req OnboardingOAuthReconnectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errx.Handle(c, errx.ErrInvalid)
+		return
+	}
+	id, err := uuid.Parse(req.AccountID)
+	if err != nil {
+		errx.Handle(c, errx.ErrUuid)
+		return
+	}
+	resp, xerr := h.EmailService.OAuthReconnectStart(c.Request.Context(), middleware.GetUserID(c), middleware.GetOrganizationID(c), id)
+	if xerr != nil {
+		errx.Handle(c, xerr)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // OnboardingOAuthFinishRequest carries the authorization code + state back from the provider.
 type OnboardingOAuthFinishRequest struct {
 	Code  string `json:"code"`
@@ -74,9 +97,14 @@ func (h *Handler) FinishEmailOAuth(c *gin.Context) {
 		return
 	}
 
-	acc, xerr := h.EmailService.OAuthFinish(c.Request.Context(), userIDStr, req.Code, req.State)
+	acc, xerr := h.EmailService.OAuthFinish(c.Request.Context(), userIDStr, middleware.GetOrganizationID(c), req.Code, req.State)
 	if xerr != nil {
 		errx.Handle(c, xerr)
+		return
+	}
+	// Credential reconnect does not activate the existing mailbox.
+	if acc.Status == "inactive" {
+		c.JSON(http.StatusOK, acc)
 		return
 	}
 

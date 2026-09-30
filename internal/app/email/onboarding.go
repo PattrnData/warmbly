@@ -58,6 +58,51 @@ func (s *emailService) OAuthStart(ctx context.Context, userID string, orgID *uui
 	return &models.EmailOnboardingStartResponse{URL: url, State: state}, nil
 }
 
+// OAuthReconnectStart binds an existing inactive mailbox to a single-use OAuth state.
+// It never creates, activates, or loads a mailbox.
+func (s *emailService) OAuthReconnectStart(ctx context.Context, userID string, orgID *uuid.UUID, accountID uuid.UUID) (*models.EmailOnboardingStartResponse, *errx.Error) {
+	if orgID == nil || accountID == uuid.Nil {
+		return nil, errx.ErrEmailOnboardState
+	}
+	acc, xerr := s.emailRepository.Get(ctx, orgID.String(), accountID.String())
+	if xerr != nil {
+		return nil, xerr
+	}
+	if xerr := validateReconnectTarget(acc, userID, orgID, accountID, ""); xerr != nil {
+		return nil, xerr
+	}
+	version, xerr := s.emailRepository.ReconnectOutlookCredentialVersion(ctx, userID, *orgID, accountID)
+	if xerr != nil {
+		return nil, xerr
+	}
+	cfg, xerr := s.oauthConfigFor(models.InboxProviderOutlook)
+	if xerr != nil {
+		return nil, xerr
+	}
+	state, err := crypt.Nonce()
+	if err != nil {
+		sentry.CaptureException(err)
+		return nil, errx.InternalError()
+	}
+	if xerr := s.saveOnboardingState(ctx, state, &models.EmailOnboardingState{
+		UserID: userID, OrganizationID: orgID, Provider: string(models.InboxProviderOutlook),
+		Nonce: state, ReconnectAccountID: &accountID, ReconnectCredentialVersion: version,
+	}); xerr != nil {
+		return nil, xerr
+	}
+	return &models.EmailOnboardingStartResponse{URL: cfg.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent")), State: state}, nil
+}
+
+func validateReconnectTarget(acc *models.Email, userID string, orgID *uuid.UUID, accountID uuid.UUID, ownerEmail string) *errx.Error {
+	if acc == nil || orgID == nil || acc.ID != accountID || acc.UserID != userID ||
+		acc.OrganizationID == nil || *acc.OrganizationID != *orgID ||
+		acc.Provider != string(models.InboxProviderOutlook) || acc.Status != "inactive" ||
+		(ownerEmail != "" && !strings.EqualFold(strings.TrimSpace(acc.Email), strings.TrimSpace(ownerEmail))) {
+		return errx.ErrEmailOnboardState
+	}
+	return nil
+}
+
 // guardMailboxThrottle bounds new-mailbox connection rate per org per
 // day so abuse paths (or accidents) can't connect 200 mailboxes in
 // one tab session. Caller-supplied orgID; nil means "best-effort
@@ -102,7 +147,7 @@ func (s *emailService) guardInboxLimit(ctx context.Context, orgID *uuid.UUID) *e
 
 // OAuthFinish validates the state, exchanges the code for tokens, fetches the inbox owner,
 // and persists a new email account.
-func (s *emailService) OAuthFinish(ctx context.Context, userID, code, state string) (*models.Email, *errx.Error) {
+func (s *emailService) OAuthFinish(ctx context.Context, userID string, orgID *uuid.UUID, code, state string) (*models.Email, *errx.Error) {
 	if code = strings.TrimSpace(code); code == "" {
 		return nil, errx.ErrEmailOnboardCode
 	}
@@ -114,12 +159,27 @@ func (s *emailService) OAuthFinish(ctx context.Context, userID, code, state stri
 	if xerr != nil {
 		return nil, xerr
 	}
-	if sess.UserID != userID {
+	if sess.UserID != userID || sess.Nonce != state {
 		return nil, errx.ErrEmailOnboardState
 	}
+	var reconnect *models.Email
+	if sess.ReconnectAccountID != nil {
+		if orgID == nil || sess.OrganizationID == nil || *orgID != *sess.OrganizationID || sess.Provider != string(models.InboxProviderOutlook) {
+			return nil, errx.ErrEmailOnboardState
+		}
+		reconnect, xerr = s.emailRepository.Get(ctx, orgID.String(), sess.ReconnectAccountID.String())
+		if xerr != nil {
+			return nil, xerr
+		}
+		if xerr := validateReconnectTarget(reconnect, userID, orgID, *sess.ReconnectAccountID, ""); xerr != nil {
+			return nil, xerr
+		}
+	}
 
-	if xerr := s.guardInboxLimit(ctx, sess.OrganizationID); xerr != nil {
-		return nil, xerr
+	if reconnect == nil {
+		if xerr := s.guardInboxLimit(ctx, sess.OrganizationID); xerr != nil {
+			return nil, xerr
+		}
 	}
 
 	provider := models.InboxProvider(sess.Provider)
@@ -136,6 +196,16 @@ func (s *emailService) OAuthFinish(ctx context.Context, userID, code, state stri
 	owner, xerr := fetchInboxOwner(ctx, provider, tok.AccessToken)
 	if xerr != nil {
 		return nil, xerr
+	}
+	if reconnect != nil {
+		if strings.TrimSpace(owner.Email) == "" || tok.AccessToken == "" || tok.RefreshToken == "" ||
+			validateReconnectTarget(reconnect, userID, orgID, *sess.ReconnectAccountID, owner.Email) != nil {
+			return nil, errx.ErrEmailOnboardState
+		}
+		if xerr := s.emailRepository.ReconnectOutlookToken(ctx, userID, *orgID, reconnect.ID, owner.Email, sess.ReconnectCredentialVersion, tok.AccessToken, tok.RefreshToken, tok.Expiry); xerr != nil {
+			return nil, xerr
+		}
+		return reconnect, nil // Intentionally no activation, worker load, or send event.
 	}
 
 	if exists, xerr := s.emailRepository.ExistsForUser(ctx, userID, owner.Email); xerr != nil {
@@ -188,11 +258,14 @@ func (s *emailService) OnboardOutlookShared(ctx context.Context, userID string, 
 		return nil, xerr
 	}
 
-	parent, xerr := s.emailRepository.Get(ctx, userID, data.ParentEmailAccountID.String())
+	if orgID == nil {
+		return nil, errx.ErrEmailOnboardState
+	}
+	parent, xerr := s.emailRepository.Get(ctx, orgID.String(), data.ParentEmailAccountID.String())
 	if xerr != nil {
 		return nil, xerr
 	}
-	if parent == nil || models.InboxProvider(parent.Provider) != models.InboxProviderOutlook {
+	if parent == nil || parent.UserID != userID || models.InboxProvider(parent.Provider) != models.InboxProviderOutlook {
 		return nil, errx.New(errx.BadRequest, "parent mailbox must be a connected Outlook account")
 	}
 

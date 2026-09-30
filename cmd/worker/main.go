@@ -100,6 +100,10 @@ func main() {
 	internalBaseURL := strings.TrimRight(os.Getenv("ENCRYPTED_KEYS_BACKEND_URL"), "/")
 	internalToken := os.Getenv("ENCRYPTED_KEYS_WORKER_TOKEN")
 	emailMessageMapRepo, err := repository.NewHTTPEmailMessageMapRepository(internalBaseURL, internalToken)
+	warmupDenyChecker, denyErr := worker.NewHTTPWarmupDenyChecker(internalBaseURL, internalToken)
+	if denyErr != nil {
+		log.Fatal("warmup deny checker unavailable: ", denyErr)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -157,6 +161,7 @@ func main() {
 
 	// WorkerService
 	workerService := &worker.WorkerService{
+		WarmupDenyChecker:         warmupDenyChecker,
 		ID:                        workerID.String(),
 		CipherService:             cipherService,
 		Bus:                       bus,

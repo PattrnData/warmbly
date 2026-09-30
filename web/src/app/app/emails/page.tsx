@@ -356,6 +356,10 @@ export default function AddressesPage() {
                                                 : setSelected((bef) => [...bef, box.id])
                                         }
                                         onOpen={openDetail}
+                                        onReconnect={() => {
+                                            p?.setReconnectEmailID(box.id);
+                                            p?.setAddEmail(true);
+                                        }}
                                     />
                                 ))}
                             </tbody>
@@ -444,6 +448,7 @@ function MailboxRow({
     checked,
     onToggleSelect,
     onOpen,
+    onReconnect,
 }: {
     box: Inbox;
     tags: Tag[];
@@ -452,6 +457,7 @@ function MailboxRow({
     checked: boolean;
     onToggleSelect: () => void;
     onOpen: (id: string, tab?: string) => void;
+    onReconnect: () => void;
 }) {
     const life = useWarmupLifecycle(box.id);
     const confirm = useConfirm();
@@ -589,6 +595,13 @@ function MailboxRow({
             </td>
             <td className="px-3">
                 <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                    {box.provider === "outlook" && box.status === "inactive" && (
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onReconnect(); }}
+                            aria-label={`Reconnect ${box.email}`} title="Reconnect Microsoft account"
+                            className="text-[11px] font-medium text-sky-700 hover:underline px-1">
+                            Reconnect
+                        </button>
+                    )}
                     <PopoverMenu align="end">
                         <PopoverMenuTrigger asChild>
                             <button

@@ -209,6 +209,7 @@ func (r *warmupRepository) GetPoolParticipants(ctx context.Context, poolType str
 		WHERE wp.pool_type = $1
 		  AND wpp.participant_role = 'sender_receiver'
 		  AND ea.status = 'active'
+		  AND NOT ea.warmup_denied
 	`
 
 	if excludeBlocked {
@@ -258,6 +259,7 @@ func (r *warmupRepository) GetPoolRecipientParticipants(ctx context.Context, poo
 		WHERE wp.pool_type = $1
 		  AND wpp.participant_role IN ('sender_receiver', 'recipient_only')
 		  AND ea.status = 'active'
+		  AND NOT ea.warmup_denied
 	`
 
 	if excludeBlocked {
@@ -299,7 +301,8 @@ func (r *warmupRepository) GetPoolRecipientParticipants(ctx context.Context, poo
 func (r *warmupRepository) JoinPool(ctx context.Context, poolID, accountID uuid.UUID) error {
 	query := `
 		INSERT INTO warmup_pool_participants (pool_id, email_account_id, joined_at, spam_score, participant_role)
-		VALUES ($1, $2, NOW(), 0, 'sender_receiver')
+		SELECT $1, ea.id, NOW(), 0, 'sender_receiver'
+		FROM (SELECT id FROM email_accounts WHERE id = $2 AND NOT warmup_denied FOR SHARE) ea
 		ON CONFLICT (pool_id, email_account_id) DO UPDATE
 		SET joined_at = warmup_pool_participants.joined_at
 	`
@@ -313,6 +316,7 @@ func (r *warmupRepository) SetParticipantRole(ctx context.Context, poolID, accou
 		UPDATE warmup_pool_participants
 		SET participant_role = $1
 		WHERE pool_id = $2 AND email_account_id = $3
+		  AND EXISTS (SELECT 1 FROM email_accounts ea WHERE ea.id = $3 AND NOT ea.warmup_denied)
 	`
 	_, err := r.db.Exec(ctx, query, role, poolID, accountID)
 	return err
@@ -1041,6 +1045,7 @@ func (r *warmupRepository) GetPoolParticipantDomains(ctx context.Context, poolTy
 		JOIN email_accounts ea ON ea.id = wpp.email_account_id
 		WHERE wp.pool_type = $1
 		  AND ea.status = 'active'
+		  AND NOT ea.warmup_denied
 	`
 	if excludeBlocked {
 		query += " AND wpp.health_state IN ('healthy', 'watch', 'throttled')"
@@ -1077,6 +1082,7 @@ func (r *warmupRepository) GetPoolParticipantEmails(ctx context.Context, poolTyp
 		JOIN email_accounts ea ON ea.id = wpp.email_account_id
 		WHERE wp.pool_type = $1
 		  AND ea.status = 'active'
+		  AND NOT ea.warmup_denied
 	`
 	if excludeBlocked {
 		query += " AND wpp.health_state IN ('healthy', 'watch', 'throttled')"
@@ -1111,6 +1117,7 @@ func (r *warmupRepository) CountEligibleRecipients(ctx context.Context, poolType
 		  AND wpp.email_account_id <> $2
 		  AND wpp.participant_role IN ('sender_receiver', 'recipient_only')
 		  AND ea.status = 'active'
+		  AND NOT ea.warmup_denied
 		  AND (
 		   wpp.health_state IN ('healthy', 'watch', 'throttled')
 		   OR (
