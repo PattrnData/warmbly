@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/events"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/pkg/emsg"
+	"github.com/warmbly/warmbly/internal/pkg/sendpayload"
 	"github.com/warmbly/warmbly/internal/repository"
 )
 
@@ -32,6 +34,24 @@ type EmailMessage struct {
 	Attachments []models.AttachmentRef
 }
 
+// sendFingerprint commits to the plaintext fields that reach the provider.
+func sendFingerprint(msg EmailMessage) string {
+	var refs []emsg.Attachment
+	for _, a := range msg.Attachments {
+		refs = append(refs, emsg.Attachment{S3Key: a.S3Key, Filename: a.Filename, MimeType: a.MimeType, SHA256: a.SHA256})
+	}
+	html := msg.BodyHTML
+	if msg.IsWarmup {
+		html = ""
+	}
+	return (sendpayload.Content{
+		From: msg.From, MessageID: msg.MessageID, To: msg.To, CC: msg.CC, BCC: msg.BCC,
+		Subject: msg.Subject, Plain: msg.BodyPlain, HTML: html, InReplyTo: msg.InReplyTo,
+		IsWarmup: msg.IsWarmup, WarmupToken: msg.WarmupToken,
+		UnsubscribeURL: msg.UnsubscribeURL, Attachments: refs,
+	}).Fingerprint()
+}
+
 // EmailSender interface for sending emails via workers
 type EmailSender interface {
 	Send(ctx context.Context, taskID uuid.UUID, msg EmailMessage, account models.Email) error
@@ -52,6 +72,11 @@ func NewEmailSender(emailRepo repository.EmailRepository, publisher events.Publi
 
 // Send publishes an email to the worker service for sending
 func (s *emailSender) Send(ctx context.Context, taskID uuid.UUID, msg EmailMessage, account models.Email) error {
+	for _, a := range msg.Attachments {
+		if len(a.SHA256) != 64 {
+			return fmt.Errorf("attachment %q has no upload digest; re-upload before sending", a.Filename)
+		}
+	}
 	// Get worker ID for this email account
 	workerID := account.WorkerID
 	if workerID == nil {

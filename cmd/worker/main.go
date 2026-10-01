@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/app/cipher"
 	"github.com/warmbly/warmbly/internal/app/worker"
+	"github.com/warmbly/warmbly/internal/app/worker/sendauth"
 	"github.com/warmbly/warmbly/internal/config"
 	"github.com/warmbly/warmbly/internal/infrastructure/cache"
 	"github.com/warmbly/warmbly/internal/infrastructure/codec"
@@ -103,6 +104,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	sendAuthorizer, err := sendauth.NewHTTPAuthorizer(internalBaseURL, internalToken, 1500*time.Millisecond)
+	if err != nil {
+		log.Fatal("send authorization configuration invalid: ", err)
+	}
 
 	// Blob storage (S3 by default, filesystem when BLOB_PROVIDER=filesystem).
 	s3Client, err := storage.NewFromEnv(ctx, awscfg, "main")
@@ -164,6 +169,7 @@ func main() {
 		Cache:                     redisCache,
 		Storage:                   s3Client,
 		EmailMessageMapRepository: emailMessageMapRepo,
+		SendAuthorizer:            sendAuthorizer,
 		OauthInbox:                &oauthInbox,
 	}
 

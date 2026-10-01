@@ -184,6 +184,7 @@ func (p *publisher) storeEmailBody(ctx context.Context, taskID, orgID uuid.UUID,
 			S3Key:    a.S3Key,
 			Filename: a.Filename,
 			MimeType: a.MimeType,
+			SHA256:   a.SHA256,
 		})
 	}
 
