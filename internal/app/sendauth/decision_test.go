@@ -3,6 +3,7 @@ package sendauth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ func (f lookupFunc) Claim(ctx context.Context, r Request) (Snapshot, error) { re
 
 func TestSendAuthorizationFailsClosedAndBindsTask(t *testing.T) {
 	account, org, worker, task := uuid.New(), uuid.New(), uuid.New(), uuid.New()
-	valid := Request{TaskID: task, EmailAccountID: account, OrganizationID: org, WorkerID: worker, MessageID: "msg", From: "sender@example.com", Provider: "gmail"}
+	valid := Request{TaskID: task, EmailAccountID: account, OrganizationID: org, WorkerID: worker, MessageID: "msg", PayloadHash: strings.Repeat("a", 64), From: "sender@example.com", Provider: "gmail"}
 	service := Service{Repository: lookupFunc(func(_ context.Context, r Request) (Snapshot, error) {
 		if r != valid {
 			return Snapshot{}, ErrNotFound
@@ -24,7 +25,7 @@ func TestSendAuthorizationFailsClosedAndBindsTask(t *testing.T) {
 	if !service.Allowed(context.Background(), valid) {
 		t.Fatal("active bound task denied")
 	}
-	for _, mutate := range []func(*Request){func(r *Request) { r.TaskID = uuid.New() }, func(r *Request) { r.EmailAccountID = uuid.New() }, func(r *Request) { r.OrganizationID = uuid.New() }, func(r *Request) { r.WorkerID = uuid.New() }, func(r *Request) { r.MessageID = "other" }, func(r *Request) { r.From = "other@example.com" }, func(r *Request) { r.Provider = "outlook" }, func(r *Request) { r.IsWarmup = true }} {
+	for _, mutate := range []func(*Request){func(r *Request) { r.TaskID = uuid.New() }, func(r *Request) { r.EmailAccountID = uuid.New() }, func(r *Request) { r.OrganizationID = uuid.New() }, func(r *Request) { r.WorkerID = uuid.New() }, func(r *Request) { r.MessageID = "other" }, func(r *Request) { r.PayloadHash = strings.Repeat("b", 64) }, func(r *Request) { r.From = "other@example.com" }, func(r *Request) { r.Provider = "outlook" }, func(r *Request) { r.IsWarmup = true }} {
 		r := valid
 		mutate(&r)
 		if service.Allowed(context.Background(), r) {

@@ -17,6 +17,7 @@ type Request struct {
 	OrganizationID uuid.UUID `json:"organization_id"`
 	WorkerID       uuid.UUID `json:"worker_id"`
 	MessageID      string    `json:"message_id"`
+	PayloadHash    string    `json:"payload_hash"`
 	From           string    `json:"from"`
 	Provider       string    `json:"provider"`
 	IsWarmup       bool      `json:"is_warmup"`
@@ -28,7 +29,7 @@ type Repository interface {
 type Service struct{ Repository Repository }
 
 func (s Service) Allowed(ctx context.Context, r Request) bool {
-	if s.Repository == nil || r.TaskID == uuid.Nil || r.EmailAccountID == uuid.Nil || r.OrganizationID == uuid.Nil || r.WorkerID == uuid.Nil || strings.TrimSpace(r.MessageID) == "" || len(r.MessageID) > 512 || strings.TrimSpace(r.From) == "" || r.Provider == "" {
+	if s.Repository == nil || r.TaskID == uuid.Nil || r.EmailAccountID == uuid.Nil || r.OrganizationID == uuid.Nil || r.WorkerID == uuid.Nil || strings.TrimSpace(r.MessageID) == "" || len(r.MessageID) > 512 || len(r.PayloadHash) != 64 || strings.TrimSpace(r.From) == "" || r.Provider == "" {
 		return false
 	}
 	snap, err := s.Repository.Claim(ctx, r)

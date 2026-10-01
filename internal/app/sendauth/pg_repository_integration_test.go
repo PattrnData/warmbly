@@ -67,6 +67,13 @@ func TestPGClaimLifecycle(t *testing.T) {
 	if _, err := pool.Exec(ctx, string(migration)); err != nil {
 		t.Fatal(err)
 	}
+	migration, err = os.ReadFile("../../infrastructure/db/migrations/000085_task_send_payload.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, string(migration)); err != nil {
+		t.Fatal(err)
+	}
 	worker, org, account, task := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	for _, query := range []struct {
 		sql  string
@@ -75,20 +82,39 @@ func TestPGClaimLifecycle(t *testing.T) {
 		{`INSERT INTO workers VALUES ($1,true)`, []any{worker}},
 		{`INSERT INTO email_accounts (id,worker_id,organization_id,provider,email,status,warmup) VALUES ($1,$2,$3,'gmail','sender@example.org','active',true)`, []any{account, worker, org}},
 		{`INSERT INTO email_accounts_oauth VALUES ($1)`, []any{account}},
-		{`INSERT INTO tasks VALUES ($1,$2,'msg-1','completed','email')`, []any{task, account}},
+		{`INSERT INTO tasks VALUES ($1,$2,'msg-1','completed','email',$3)`, []any{task, account, strings.Repeat("a", 64)}},
 		{`INSERT INTO email_tasks VALUES ($1)`, []any{task}},
 	} {
 		if _, err := pool.Exec(ctx, query.sql, query.args...); err != nil {
 			t.Fatal(err)
 		}
 	}
-	req := Request{TaskID: task, EmailAccountID: account, OrganizationID: org, WorkerID: worker, MessageID: "msg-1", From: "sender@example.org", Provider: "gmail"}
+	req := Request{TaskID: task, EmailAccountID: account, OrganizationID: org, WorkerID: worker, MessageID: "msg-1", From: "sender@example.org", Provider: "gmail", PayloadHash: strings.Repeat("a", 64)}
 	service := Service{Repository: PGRepository{Pool: pool}}
+	legacy := uuid.New()
+	if _, err := pool.Exec(ctx, `INSERT INTO tasks (id,email_account_id,message_id,status,task_type) VALUES ($1,$2,'legacy','completed','email')`, legacy, account); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO email_tasks VALUES ($1)`, legacy); err != nil {
+		t.Fatal(err)
+	}
+	old := req
+	old.TaskID, old.MessageID = legacy, "legacy"
+	if service.Allowed(ctx, old) {
+		t.Fatal("unbound historical payload allowed")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE tasks SET send_payload_hash = $2 WHERE id = $1`, task, strings.Repeat("b", 64)); err == nil {
+		t.Fatal("persisted send hash was mutable")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE tasks SET message_id = 'other' WHERE id = $1`, task); err == nil {
+		t.Fatal("persisted message id was mutable")
+	}
 	for _, bad := range []Request{
 		func() Request { r := req; r.MessageID = "wrong"; return r }(),
 		func() Request { r := req; r.From = "other@example.org"; return r }(),
 		func() Request { r := req; r.IsWarmup = true; return r }(),
 		func() Request { r := req; r.Provider = "outlook"; return r }(),
+		func() Request { r := req; r.PayloadHash = strings.Repeat("b", 64); return r }(),
 	} {
 		if service.Allowed(ctx, bad) {
 			t.Fatal("invalid binding allowed")
@@ -133,7 +159,7 @@ func TestPGClaimLifecycle(t *testing.T) {
 	for _, kind := range []string{"warmup", "campaign"} {
 		id := uuid.New()
 		messageID := "msg-" + kind
-		if _, err := pool.Exec(ctx, `INSERT INTO tasks VALUES ($1,$2,$3,'completed',$4)`, id, account, messageID, kind); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO tasks VALUES ($1,$2,$3,'completed',$4,$5)`, id, account, messageID, kind, strings.Repeat("a", 64)); err != nil {
 			t.Fatal(err)
 		}
 		if kind == "warmup" {
