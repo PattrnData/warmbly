@@ -54,7 +54,7 @@ func TestSendAuthorizationBeforeProviderForAllProvidersAndModes(t *testing.T) {
 	}
 }
 
-func TestSendRetryRechecksRevokedAuthorization(t *testing.T) {
+func TestSendNeverRetriesAfterClaimedAttempt(t *testing.T) {
 	for _, warmup := range []bool{false, true} {
 		for _, provider := range []models.InboxProvider{models.InboxProviderGoogle, models.InboxProviderOutlook, models.InboxProviderSMTPIMAP} {
 			mail := &WMail{ID: uuid.New(), Email: "sender@example.org", EmailType: provider}
@@ -73,10 +73,7 @@ func TestSendRetryRechecksRevokedAuthorization(t *testing.T) {
 				return nil
 			})
 			result := mail.Send(context.Background(), req)
-			wantChecks := 2 // Legacy transports still recheck before a retry.
-			if provider == models.InboxProviderOutlook {
-				wantChecks = 1 // Graph's acceptance is ambiguous; never retry.
-			}
+			wantChecks := 1 // A claim consumes the task's only provider attempt.
 			if result.Success || checks != wantChecks || providerCalls != 1 {
 				t.Fatalf("retry leaked (%s warmup=%v): %+v checks=%d provider=%d", provider, warmup, result, checks, providerCalls)
 			}

@@ -278,7 +278,8 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 	// message_id <> '') can find this send as a thread parent on a later turn.
 	// Without this the warmup reply/threading path never fires.
 	if err := s.taskRepo.UpdateTaskMessageID(ctx, taskID, messageID); err != nil {
-		log.Warn().Err(err).Str("task_id", taskID.String()).Msg("Failed to persist warmup task message_id")
+		sentry.CaptureException(err)
+		return errx.InternalError()
 	}
 
 	// STEP 9.5: Generate warmup verification token
