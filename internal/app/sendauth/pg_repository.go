@@ -29,7 +29,7 @@ const BindingSQL = `WITH eligible AS (
    AND ( (t.task_type = 'campaign' AND EXISTS (
        SELECT 1 FROM campaign_tasks ct JOIN campaigns c ON c.id = ct.campaign_id
        WHERE ct.task_id = t.id AND c.organization_id = ea.organization_id AND c.status = 'active'))
-     OR (t.task_type = 'warmup' AND ea.warmup IS NOT NULL AND ea.warmup_paused_at IS NULL
+     OR (t.task_type = 'warmup' AND ea.warmup IS NOT NULL AND ea.warmup_paused_at IS NULL AND NOT ea.warmup_denied
        AND EXISTS (SELECT 1 FROM warmup_tasks wt WHERE wt.task_id = t.id))
      OR (t.task_type = 'email' AND EXISTS (SELECT 1 FROM email_tasks et WHERE et.task_id = t.id)) )
 ), claimed AS (

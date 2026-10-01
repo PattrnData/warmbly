@@ -46,7 +46,7 @@ func TestPGClaimLifecycle(t *testing.T) {
 	defer pool.Close()
 	ddl := []string{
 		`CREATE TABLE workers (id uuid PRIMARY KEY, active boolean NOT NULL)`,
-		`CREATE TABLE email_accounts (id uuid PRIMARY KEY, worker_id uuid, organization_id uuid, provider text, email text, status text, warmup boolean, warmup_paused_at timestamptz)`,
+		`CREATE TABLE email_accounts (id uuid PRIMARY KEY, worker_id uuid, organization_id uuid, provider text, email text, status text, warmup boolean, warmup_paused_at timestamptz, warmup_denied boolean NOT NULL DEFAULT false)`,
 		`CREATE TABLE email_accounts_oauth (email_account_id uuid PRIMARY KEY)`,
 		`CREATE TABLE email_accounts_smtp_imap (email_account_id uuid PRIMARY KEY)`,
 		`CREATE TABLE tasks (id uuid PRIMARY KEY, email_account_id uuid, message_id text, status text, task_type text)`,
@@ -180,5 +180,28 @@ func TestPGClaimLifecycle(t *testing.T) {
 		if !service.Allowed(ctx, r) || service.Allowed(ctx, r) {
 			t.Fatalf("%s should claim exactly once", kind)
 		}
+	}
+	// A worker may have checked the completed task before the operator denies warmup.
+	deniedTask := uuid.New()
+	if _, err := pool.Exec(ctx, `INSERT INTO tasks VALUES ($1,$2,'msg-denied','completed','warmup',$3)`, deniedTask, account, strings.Repeat("a", 64)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO warmup_tasks VALUES ($1)`, deniedTask); err != nil {
+		t.Fatal(err)
+	}
+	deniedReq := req
+	deniedReq.TaskID, deniedReq.MessageID, deniedReq.IsWarmup = deniedTask, "msg-denied", true
+	var status string
+	if err := pool.QueryRow(ctx, `SELECT status FROM tasks WHERE id=$1`, deniedTask).Scan(&status); err != nil || status != "completed" {
+		t.Fatalf("stale worker check: status=%q err=%v", status, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts SET warmup_denied=true WHERE id=$1`, account); err != nil {
+		t.Fatal(err)
+	}
+	if service.Allowed(ctx, deniedReq) {
+		t.Fatal("completed queued warmup task claimed after operator denial")
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM send_attempt_claims WHERE task_id=$1`, deniedTask).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("denied task persisted claims: %d err=%v", count, err)
 	}
 }
