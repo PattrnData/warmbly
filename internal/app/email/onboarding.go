@@ -399,9 +399,9 @@ func (s *emailService) OnboardOutlookAppOnly(ctx context.Context, userID string,
 // ConvertOutlookAppOnly changes only the credential mode of one existing
 // inactive shared sender. It never creates/activates a mailbox, loads a worker,
 // or emits a connected event; those steps require a separate production gate.
-func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, id, parentID uuid.UUID, email string, tenantID uuid.UUID) (*models.Email, *errx.Error) {
+func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, id, workerID uuid.UUID, email string, tenantID uuid.UUID, expectedVersion string) (*models.Email, *errx.Error) {
 	email = strings.TrimSpace(email)
-	if orgID == nil || !approvedSharedSenderConversionTarget(id) || parentID == uuid.Nil || id == parentID || tenantID == uuid.Nil || email == "" {
+	if orgID == nil || !approvedSharedSenderConversionTarget(id) || workerID == uuid.Nil || tenantID == uuid.Nil || email == "" || expectedVersion == "" {
 		return nil, errx.ErrEmailOnboardState
 	}
 	acc, xerr := s.emailRepository.Get(ctx, orgID.String(), id.String())
@@ -411,12 +411,7 @@ func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string,
 	if xerr := validateReconnectTarget(acc, userID, orgID, id, email); xerr != nil {
 		return nil, xerr
 	}
-	parent, xerr := s.emailRepository.Get(ctx, orgID.String(), parentID.String())
-	if xerr != nil {
-		return nil, xerr
-	}
-	if parent == nil || parent.ID != parentID || parent.UserID != userID || parent.OrganizationID == nil || *parent.OrganizationID != *orgID ||
-		parent.Provider != "outlook" || parent.Status != "active" || strings.EqualFold(parent.Email, acc.Email) {
+	if acc.WorkerID == nil || *acc.WorkerID != workerID {
 		return nil, errx.ErrEmailOnboardState
 	}
 	if s.oauthInbox == nil || s.oauthInbox.OutlookAppOnly == nil || s.oauthInbox.OutlookAppOnly.ClientID == "" || s.oauthInbox.OutlookAppOnly.ClientSecret == "" {
@@ -428,9 +423,9 @@ func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string,
 		!strings.HasSuffix(strings.TrimSuffix(tokenURL.Path, "/oauth2/v2.0/token"), "/"+tenantID.String()) {
 		return nil, errx.ErrEmailOnboardState
 	}
-	version, xerr := s.emailRepository.OutlookAppOnlyConversionVersion(ctx, userID, *orgID, id, parentID, email)
-	if xerr != nil {
-		return nil, xerr
+	version, xerr := s.emailRepository.OutlookAppOnlyConversionVersion(ctx, userID, *orgID, id, workerID, email)
+	if xerr != nil || version != expectedVersion {
+		return nil, errx.ErrEmailOnboardState
 	}
 	tok, err := s.oauthInbox.OutlookAppOnly.Token(ctx)
 	if err != nil || tok.AccessToken == "" {
@@ -442,7 +437,7 @@ func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string,
 	if xerr := validateOutlookSharedMailboxAccess(ctx, tok.AccessToken, acc.Email); xerr != nil {
 		return nil, xerr
 	}
-	if xerr := s.emailRepository.ConvertOutlookAppOnly(ctx, userID, *orgID, id, parentID, email, version); xerr != nil {
+	if xerr := s.emailRepository.ConvertOutlookAppOnly(ctx, userID, *orgID, id, workerID, email, expectedVersion); xerr != nil {
 		return nil, xerr
 	}
 	return acc, nil

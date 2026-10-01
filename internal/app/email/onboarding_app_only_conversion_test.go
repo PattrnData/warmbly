@@ -19,16 +19,13 @@ import (
 
 type conversionRepo struct {
 	repository.EmailRepository
-	target, parent            *models.Email
+	target                    *models.Email
 	versionReads, conversions int
 }
 
 func (r *conversionRepo) Get(_ context.Context, _, id string) (*models.Email, *errx.Error) {
 	if id == r.target.ID.String() {
 		return r.target, nil
-	}
-	if id == r.parent.ID.String() {
-		return r.parent, nil
 	}
 	return nil, errx.ErrEmailOnboardState
 }
@@ -69,10 +66,9 @@ func TestAppTokenMatchesTenantAndRoles(t *testing.T) {
 }
 
 func TestConvertOutlookAppOnlyExactInactiveSharedSender(t *testing.T) {
-	org, targetID, parentID, tenantID := uuid.New(), uuid.MustParse("af571c6e-e6f0-4cb9-90fe-a7d5105babd7"), uuid.New(), uuid.New()
-	target := &models.Email{ID: targetID, UserID: "owner", OrganizationID: &org, Email: "shared@example.test", Provider: "outlook", Status: "inactive"}
-	parent := &models.Email{ID: parentID, UserID: "owner", OrganizationID: &org, Email: "delegate@example.test", Provider: "outlook", Status: "active"}
-	repo := &conversionRepo{target: target, parent: parent}
+	org, targetID, workerID, tenantID := uuid.New(), uuid.MustParse("af571c6e-e6f0-4cb9-90fe-a7d5105babd7"), uuid.New(), uuid.New()
+	target := &models.Email{ID: targetID, UserID: "owner", OrganizationID: &org, WorkerID: &workerID, Email: "shared@example.test", Provider: "outlook", Status: "inactive"}
+	repo := &conversionRepo{target: target}
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		payload := `{"tid":"` + tenantID.String() + `","appid":"synthetic","aud":"https://graph.microsoft.com","roles":["Mail.ReadWrite","Mail.Send"]}`
@@ -94,46 +90,48 @@ func TestConvertOutlookAppOnlyExactInactiveSharedSender(t *testing.T) {
 	svc := &emailService{emailRepository: repo, oauthInbox: &config.Oauth2Inbox{OutlookAppOnly: &clientcredentials.Config{
 		ClientID: "synthetic", ClientSecret: "synthetic", TokenURL: tokenServer.URL + "/" + tenantID.String() + "/oauth2/v2.0/token",
 	}}}
-	call := func(user string, orgID *uuid.UUID, id, delegate uuid.UUID, email string) *errx.Error {
-		_, xerr := svc.ConvertOutlookAppOnly(context.Background(), user, orgID, id, delegate, email, tenantID)
+	call := func(user string, orgID *uuid.UUID, id, worker uuid.UUID, email, version string) *errx.Error {
+		_, xerr := svc.ConvertOutlookAppOnly(context.Background(), user, orgID, id, worker, email, tenantID, version)
 		return xerr
 	}
 	for _, tc := range []struct {
-		name, user, email string
-		org               *uuid.UUID
-		id, parent        uuid.UUID
+		name, user, email, version string
+		org                        *uuid.UUID
+		id, worker                 uuid.UUID
 	}{
-		{"wrong user", "intruder", target.Email, &org, targetID, parentID},
-		{"wrong org", "owner", target.Email, ptrUUID(uuid.New()), targetID, parentID},
-		{"wrong id", "owner", target.Email, &org, uuid.New(), parentID},
-		{"quarantined fifth", "owner", target.Email, &org, uuid.MustParse("a5f28cfb-b10f-4597-b445-28e647e0dd92"), parentID},
-		{"wrong email", "owner", "another@example.test", &org, targetID, parentID},
-		{"no parent", "owner", target.Email, &org, targetID, uuid.Nil},
-		{"self parent", "owner", target.Email, &org, targetID, targetID},
+		{"wrong user", "intruder", target.Email, "fixture-version", &org, targetID, workerID},
+		{"wrong org", "owner", target.Email, "fixture-version", ptrUUID(uuid.New()), targetID, workerID},
+		{"wrong id", "owner", target.Email, "fixture-version", &org, uuid.New(), workerID},
+		{"quarantined fifth", "owner", target.Email, "fixture-version", &org, uuid.MustParse("a5f28cfb-b10f-4597-b445-28e647e0dd92"), workerID},
+		{"wrong email", "owner", "another@example.test", "fixture-version", &org, targetID, workerID},
+		{"wrong worker", "owner", target.Email, "fixture-version", &org, targetID, uuid.New()},
+		{"no worker", "owner", target.Email, "fixture-version", &org, targetID, uuid.Nil},
+		{"no escrow version", "owner", target.Email, "", &org, targetID, workerID},
+		{"stale escrow version", "owner", target.Email, "old-version", &org, targetID, workerID},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if call(tc.user, tc.org, tc.id, tc.parent, tc.email) == nil {
+			if call(tc.user, tc.org, tc.id, tc.worker, tc.email, tc.version) == nil {
 				t.Fatal("mismatch accepted")
 			}
 		})
 	}
-	if repo.versionReads != 0 || graphReads != 0 || repo.conversions != 0 {
-		t.Fatal("mismatch reached credential/Graph path")
+	if graphReads != 0 || repo.conversions != 0 {
+		t.Fatal("mismatch reached Graph/write path")
 	}
 	graphStatus = http.StatusForbidden
-	if call("owner", &org, targetID, parentID, target.Email) == nil || repo.conversions != 0 {
+	if call("owner", &org, targetID, workerID, target.Email, "fixture-version") == nil || repo.conversions != 0 {
 		t.Fatal("Graph rejection changed credential")
 	}
 	graphStatus = http.StatusOK
-	if _, xerr := svc.ConvertOutlookAppOnly(context.Background(), "owner", &org, targetID, parentID, target.Email, uuid.New()); xerr == nil || repo.conversions != 0 {
+	if _, xerr := svc.ConvertOutlookAppOnly(context.Background(), "owner", &org, targetID, workerID, target.Email, uuid.New(), "fixture-version"); xerr == nil || repo.conversions != 0 {
 		t.Fatal("wrong tenant accepted")
 	}
-	acc, xerr := svc.ConvertOutlookAppOnly(context.Background(), "owner", &org, targetID, parentID, target.Email, tenantID)
+	acc, xerr := svc.ConvertOutlookAppOnly(context.Background(), "owner", &org, targetID, workerID, target.Email, tenantID, "fixture-version")
 	if xerr != nil || acc != target || acc.Status != "inactive" || repo.conversions != 1 {
 		t.Fatalf("conversion failed or activated sender: %v %+v", xerr, acc)
 	}
-	parent.Status = "inactive"
-	if call("owner", &org, targetID, parentID, target.Email) == nil || repo.conversions != 1 {
-		t.Fatal("inactive parent accepted")
+	target.Status = "active"
+	if call("owner", &org, targetID, workerID, target.Email, "fixture-version") == nil || repo.conversions != 1 {
+		t.Fatal("active target accepted")
 	}
 }

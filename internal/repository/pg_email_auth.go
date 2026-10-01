@@ -237,22 +237,20 @@ func (r *emailRepository) ReconnectOutlookToken(ctx context.Context, userID stri
 	return nil
 }
 
-// OutlookAppOnlyConversionVersion binds an inactive shared sender to its
-// active, same-owner delegate: the sealed credential must be an exact copy.
-// Only an opaque version leaves the repository; no token is returned/logged.
-func (r *emailRepository) OutlookAppOnlyConversionVersion(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email string) (string, *errx.Error) {
-	const query = `SELECT md5(o.refresh_token || ':' || o.access_token)
-		FROM email_accounts ea
-		JOIN email_accounts_oauth o ON o.email_account_id = ea.id
-		JOIN email_accounts p ON p.id = $4 AND p.user_id = ea.user_id AND p.organization_id = ea.organization_id
-		  AND p.provider = 'outlook' AND p.status = 'active' AND lower(p.email) <> lower(ea.email)
-		JOIN email_accounts_oauth po ON po.email_account_id = p.id AND po.refresh_token = o.refresh_token AND po.access_token = o.access_token
-		WHERE ea.id = $1 AND ea.user_id = $2 AND ea.organization_id = $3
+// OutlookAppOnlyConversionVersion reads an inactive sender's exact credential
+// preimage. The version is a concurrency guard, not authorization or escrow.
+func (r *emailRepository) OutlookAppOnlyConversionVersion(ctx context.Context, userID string, orgID, id, workerID uuid.UUID, email string) (string, *errx.Error) {
+	if workerID == uuid.Nil || !approvedAppOnlyConversionID(id) {
+		return "", errx.ErrEmailOnboardState
+	}
+	const query = `SELECT md5(o.refresh_token || ':' || o.access_token || ':' || o.expires_at::text)
+		FROM email_accounts ea JOIN email_accounts_oauth o ON o.email_account_id = ea.id
+		WHERE ea.id = $1 AND ea.user_id = $2 AND ea.organization_id = $3 AND ea.worker_id = $4
 		  AND lower(ea.email) = lower($5) AND ea.provider = 'outlook' AND ea.status = 'inactive'
-		  AND ea.id <> p.id AND o.refresh_token <> $6 AND o.refresh_token <> ''
-		  AND o.access_token <> ''`
+		  AND o.refresh_token <> $6 AND o.refresh_token <> '' AND o.access_token <> ''
+		  AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.email_account_id = ea.id AND t.status IN ('pending','active'))`
 	var version string
-	if err := r.DB.QueryRow(ctx, query, id, userID, orgID, parentID, email, models.GraphAppOnlyRefreshToken).Scan(&version); errors.Is(err, pgx.ErrNoRows) {
+	if err := r.DB.QueryRow(ctx, query, id, userID, orgID, workerID, email, models.GraphAppOnlyRefreshToken).Scan(&version); errors.Is(err, pgx.ErrNoRows) {
 		return "", errx.ErrEmailOnboardState
 	} else if err != nil {
 		db.CaptureError(err, query, nil, "queryrow")
@@ -261,26 +259,22 @@ func (r *emailRepository) OutlookAppOnlyConversionVersion(ctx context.Context, u
 	return version, nil
 }
 
-// ConvertOutlookAppOnly is one atomic, exact-row credential-mode CAS. It does
-// not touch the mailbox row/status/history or create a duplicate. PostgreSQL
-// rolls back the statement on error; a later operational rollback requires an
-// independently approved encrypted preimage and exact-row reverse CAS.
-func (r *emailRepository) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email, observedCredential string) *errx.Error {
-	if observedCredential == "" || id == uuid.Nil || parentID == uuid.Nil || id == parentID {
+// ConvertOutlookAppOnly is one atomic exact-row CAS; status, worker and history
+// remain unchanged. Operational rollback needs an independently escrowed preimage.
+func (r *emailRepository) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID, id, workerID uuid.UUID, email, observedCredential string) *errx.Error {
+	if observedCredential == "" || workerID == uuid.Nil || !approvedAppOnlyConversionID(id) {
 		return errx.ErrEmailOnboardState
 	}
 	const query = `UPDATE email_accounts_oauth o
 		SET access_token = '', refresh_token = $1, expires_at = now()
-		FROM email_accounts ea, email_accounts p, email_accounts_oauth po
+		FROM email_accounts ea
 		WHERE o.email_account_id = ea.id AND ea.id = $2
-		  AND ea.user_id = $3 AND ea.organization_id = $4
+		  AND ea.user_id = $3 AND ea.organization_id = $4 AND ea.worker_id = $6
 		  AND lower(ea.email) = lower($5) AND ea.provider = 'outlook' AND ea.status = 'inactive'
-		  AND p.id = $6 AND p.id <> ea.id AND p.user_id = ea.user_id AND p.organization_id = ea.organization_id
-		  AND p.provider = 'outlook' AND p.status = 'active' AND lower(p.email) <> lower(ea.email)
-		  AND po.email_account_id = p.id AND po.refresh_token = o.refresh_token AND po.access_token = o.access_token
 		  AND o.refresh_token <> $1 AND o.refresh_token <> '' AND o.access_token <> ''
-		  AND md5(o.refresh_token || ':' || o.access_token) = $7`
-	tag, err := r.DB.Exec(ctx, query, models.GraphAppOnlyRefreshToken, id, userID, orgID, email, parentID, observedCredential)
+		  AND md5(o.refresh_token || ':' || o.access_token || ':' || o.expires_at::text) = $7
+		  AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.email_account_id = ea.id AND t.status IN ('pending','active'))`
+	tag, err := r.DB.Exec(ctx, query, models.GraphAppOnlyRefreshToken, id, userID, orgID, email, workerID, observedCredential)
 	if err != nil {
 		db.CaptureError(err, query, nil, "exec")
 		return errx.InternalError()
@@ -289,4 +283,14 @@ func (r *emailRepository) ConvertOutlookAppOnly(ctx context.Context, userID stri
 		return errx.ErrEmailOnboardState
 	}
 	return nil
+}
+
+// Defense in depth: the repository cannot convert even if a caller bypasses
+// the internal service allowlist. Remove after the incident recovery.
+func approvedAppOnlyConversionID(id uuid.UUID) bool {
+	switch id.String() {
+	case "af571c6e-e6f0-4cb9-90fe-a7d5105babd7", "e165f276-cc96-4907-991a-a7b860e1ed6f", "e7ce131c-4a6f-4529-9bd4-9f88bfd99208", "ea4b17db-80b9-445b-9c28-8d67679dc4a5":
+		return true
+	}
+	return false
 }

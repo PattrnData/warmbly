@@ -86,8 +86,8 @@ type EmailRepository interface {
 	RefreshBoxToken(ctx context.Context, id uuid.UUID, accessToken, refreshToken string, expiresAt time.Time) error
 	ReconnectOutlookToken(ctx context.Context, userID string, orgID, id uuid.UUID, email, observedCredential, accessToken, refreshToken string, expiresAt time.Time) *errx.Error
 	ReconnectOutlookCredentialVersion(ctx context.Context, userID string, orgID, id uuid.UUID) (string, *errx.Error)
-	OutlookAppOnlyConversionVersion(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email string) (string, *errx.Error)
-	ConvertOutlookAppOnly(ctx context.Context, userID string, orgID, id, parentID uuid.UUID, email, observedCredential string) *errx.Error
+	OutlookAppOnlyConversionVersion(ctx context.Context, userID string, orgID, id, workerID uuid.UUID, email string) (string, *errx.Error)
+	ConvertOutlookAppOnly(ctx context.Context, userID string, orgID, id, workerID uuid.UUID, email, observedCredential string) *errx.Error
 
 	// ExistsForUser checks whether the given (user_id, email) pair is already connected.
 	ExistsForUser(ctx context.Context, userID, email string) (bool, *errx.Error)
@@ -602,7 +602,7 @@ func (r *emailRepository) Search(ctx context.Context, orgID, search string, curs
 func (r *emailRepository) Get(ctx context.Context, orgID, emailAccountID string) (*models.Email, *errx.Error) {
 	query := `
 		SELECT
-		ea.id, ea.user_id, ea.organization_id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
+		ea.id, ea.user_id, ea.organization_id, ea.worker_id, ea.email, ea.name, COALESCE(ea.signature_plain, ''), COALESCE(ea.signature_html, ''), ea.signature_sync, ea.signature_code,
 		 ea.provider, ea.status, COALESCE(ea.last_synced_at, ea.created_at) AS last_synced_at, ea.last_id, ea.campaign_limit,
 		 ea.min_wait_time, COALESCE(ea.reply_to, ''), COALESCE(ea.tracking_domain, ''), ea.tracking_domain_verified, ea.tracking_domain_verified_at,
 		 COALESCE(ea.auth_state, 'unknown'), ea.auth_spf, ea.auth_dkim, ea.auth_dmarc, COALESCE(ea.auth_dmarc_policy, ''), COALESCE(ea.auth_reason, ''), ea.auth_checked_at,
@@ -627,7 +627,7 @@ func (r *emailRepository) Get(ctx context.Context, orgID, emailAccountID string)
 		query,
 		params...,
 	).Scan(
-		&i.ID, &i.UserID, &i.OrganizationID, &i.Email, &i.Name, &i.SignaturePlain, &i.SignatureHTML, &i.SignatureSync, &i.SignatureCode, &i.Provider, &i.Status,
+		&i.ID, &i.UserID, &i.OrganizationID, &i.WorkerID, &i.Email, &i.Name, &i.SignaturePlain, &i.SignatureHTML, &i.SignatureSync, &i.SignatureCode, &i.Provider, &i.Status,
 		&i.LastSyncedAt, &i.LastID, &i.CampaignLimit, &i.MinWaitTime, &i.ReplyTo, &i.TrackingDomain, &i.TrackingDomainVerified, &i.TrackingDomainVerifiedAt,
 		&i.AuthState, &i.AuthSPF, &i.AuthDKIM, &i.AuthDMARC, &i.AuthDMARCPolicy, &i.AuthReason, &i.AuthCheckedAt,
 		&i.Warmup, &i.WarmupPausedAt, &i.WarmupBase, &i.WarmupMax, &i.WarmupIncrease,
