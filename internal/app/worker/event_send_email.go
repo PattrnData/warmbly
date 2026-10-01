@@ -87,11 +87,18 @@ func (w *WorkerService) HandleSendEmail(ctx context.Context, sendEmail models.Se
 		return err
 	}
 
-	// Use unified Send method
+	// Use unified Send method; the provider boundary verifies this exact queued tuple.
+	workerID, _ := uuid.Parse(w.ID)
 	w.recordSendAttempt()
 	sendStart := time.Now()
 	result := mail.Send(ctx, &wmail.SendRequest{
 		TaskID:         sendEmail.TaskID,
+		EmailID:        sendEmail.EmailID,
+		OrgID:          sendEmail.OrgID,
+		WorkerID:       workerID,
+		From:           mail.Email,
+		Provider:       mail.EmailType,
+		Authorizer:     w.SendAuthorizer,
 		To:             sendEmail.To,
 		Cc:             sendEmail.Cc,
 		Bcc:            sendEmail.Bcc,

@@ -46,8 +46,10 @@ type SmtpImapData struct {
 }
 
 type WMail struct {
-	UserID uuid.UUID
-	ID     uuid.UUID
+	// sendAttempt is a test seam; production leaves it nil and uses provider clients.
+	sendAttempt func(context.Context, *SendRequest, string) *SendResult
+	UserID      uuid.UUID
+	ID          uuid.UUID
 
 	Email          string
 	FirstName      string

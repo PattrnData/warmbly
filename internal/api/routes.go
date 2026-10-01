@@ -85,6 +85,7 @@ func Run(
 	internal := r.Group("/api/v1/internal")
 	internal.Use(m.InternalAuthMiddleware())
 	{
+		internal.POST("/send-authorization", h.InternalSendAuthorization)
 		internal.GET("/dek/:orgID", h.InternalGetDEK)
 		internal.PUT("/dek/:orgID", h.InternalPutDEK)
 		internal.DELETE("/dek/:orgID", h.InternalDeleteDEK)
