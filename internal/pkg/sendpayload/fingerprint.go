@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/warmbly/warmbly/internal/models"
 	"github.com/warmbly/warmbly/internal/pkg/emsg"
 )
 
@@ -18,6 +19,7 @@ type Content struct {
 	Subject, Plain, HTML, InReplyTo, WarmupToken, UnsubscribeURL string
 	IsWarmup                                                     bool
 	Attachments                                                  []emsg.Attachment
+	Parent                                                       *models.EmailParent
 }
 
 func (c Content) Fingerprint() string {

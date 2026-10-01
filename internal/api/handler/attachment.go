@@ -7,6 +7,7 @@ package handler
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -147,6 +148,7 @@ func (h *Handler) UploadCampaignAttachment(c *gin.Context) {
 		Size:       fh.Size,
 		MimeType:   mimeType,
 		S3Key:      key,
+		SHA256:     fmt.Sprintf("%x", sha256.Sum256(body)),
 	}
 	if err := h.AttachmentRepo.Create(c.Request.Context(), att); err != nil {
 		_ = h.Storage.Delete(c.Request.Context(), key) // best-effort cleanup

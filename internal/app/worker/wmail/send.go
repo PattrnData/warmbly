@@ -2,7 +2,9 @@ package wmail
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -95,11 +97,21 @@ func (w *WMail) Send(ctx context.Context, req *SendRequest) *SendResult {
 	if req.IsWarmup {
 		bodyHTML = ""
 	}
+	if len(req.Attachments) != len(req.AttachmentRefs) {
+		return deniedSendResult()
+	}
+	for i, ref := range req.AttachmentRefs {
+		a := req.Attachments[i]
+		if len(ref.SHA256) != 64 || ref.SHA256 != fmt.Sprintf("%x", sha256.Sum256(a.Data)) ||
+			ref.Filename != a.Filename || (ref.MimeType != a.MimeType && !(ref.MimeType == "" && a.MimeType == "application/octet-stream")) {
+			return deniedSendResult()
+		}
+	}
 	payloadHash := (sendpayload.Content{
 		From: req.From, MessageID: req.MessageID, To: req.To, CC: req.Cc, BCC: req.Bcc,
 		Subject: req.Subject, Plain: req.BodyPlain, HTML: bodyHTML, InReplyTo: req.InReplyTo,
 		IsWarmup: req.IsWarmup, WarmupToken: req.WarmupToken,
-		UnsubscribeURL: req.UnsubscribeURL, Attachments: req.AttachmentRefs,
+		UnsubscribeURL: req.UnsubscribeURL, Attachments: req.AttachmentRefs, Parent: req.Parent,
 	}).Fingerprint()
 	if w == nil || req.Authorizer == nil || req.EmailID != w.ID ||
 		!strings.EqualFold(req.From, w.Email) || req.Provider != w.EmailType ||

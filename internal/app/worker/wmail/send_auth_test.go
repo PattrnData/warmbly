@@ -2,6 +2,8 @@ package wmail
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 
 	"net/http"
 	"net/http/httptest"
@@ -94,6 +96,42 @@ func TestSendHashesActualProviderPayloadBeforeClaim(t *testing.T) {
 	})
 	if r := mail.Send(context.Background(), req); r.Success || providerCalls != 0 {
 		t.Fatalf("tampered send reached provider: %+v", r)
+	}
+}
+
+func TestSendDeniesChangedAttachmentBytesAndParentBeforeClaim(t *testing.T) {
+	mail := &WMail{ID: uuid.New(), Email: "sender@example.org", EmailType: models.InboxProviderGoogle}
+	providerCalls, claimCalls := 0, 0
+	mail.sendAttempt = func(context.Context, *SendRequest, string) *SendResult {
+		providerCalls++
+		return &SendResult{Success: true}
+	}
+	data := []byte("original")
+	req := &SendRequest{TaskID: uuid.New(), EmailID: mail.ID, OrgID: uuid.New(), WorkerID: uuid.New(),
+		MessageID: "msg", From: mail.Email, Provider: mail.EmailType, InReplyTo: "prior",
+		Attachments:    []Attachment{{Filename: "a.txt", MimeType: "text/plain", Data: data}},
+		AttachmentRefs: []emsg.Attachment{{S3Key: "same-key", Filename: "a.txt", MimeType: "text/plain", SHA256: fmt.Sprintf("%x", sha256.Sum256(data))}},
+	}
+	req.Authorizer = fakeAuthorizer(func(context.Context, sendauth.Request) error { claimCalls++; return nil })
+	req.Attachments[0].Data = []byte("replaced at same key")
+	if r := mail.Send(context.Background(), req); r.Success || providerCalls != 0 || claimCalls != 0 {
+		t.Fatalf("changed bytes reached claim/provider: %+v claim=%d provider=%d", r, claimCalls, providerCalls)
+	}
+	req.Attachments[0].Data = data
+	if r := mail.Send(context.Background(), req); !r.Success || providerCalls != 1 || claimCalls != 1 {
+		t.Fatalf("matching attachment failed before provider: %+v claim=%d provider=%d", r, claimCalls, providerCalls)
+	}
+	req.Parent = &models.EmailParent{MessageID: "forged", ThreadID: "other"}
+	approved := (sendpayload.Content{From: req.From, MessageID: req.MessageID, InReplyTo: req.InReplyTo, Attachments: req.AttachmentRefs}).Fingerprint()
+	req.Authorizer = fakeAuthorizer(func(_ context.Context, got sendauth.Request) error {
+		claimCalls++
+		if got.PayloadHash == approved {
+			t.Fatal("forged parent retained approved hash")
+		}
+		return sendauth.ErrDenied
+	})
+	if r := mail.Send(context.Background(), req); r.Success || providerCalls != 1 {
+		t.Fatalf("forged parent reached provider: %+v", r)
 	}
 }
 

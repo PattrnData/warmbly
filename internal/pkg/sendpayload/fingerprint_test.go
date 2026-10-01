@@ -3,6 +3,7 @@ package sendpayload
 import (
 	"testing"
 
+	"github.com/warmbly/warmbly/internal/models"
 	"github.com/warmbly/warmbly/internal/pkg/emsg"
 )
 
@@ -39,6 +40,12 @@ func TestFingerprintBindsEveryMaterialField(t *testing.T) {
 		},
 		"attachment-type": func(c *Content) {
 			c.Attachments = []emsg.Attachment{{S3Key: "object", Filename: "file", MimeType: "other"}}
+		},
+		"attachment-bytes": func(c *Content) {
+			c.Attachments = []emsg.Attachment{{S3Key: "object", Filename: "file", MimeType: "text/plain", SHA256: "different"}}
+		},
+		"parent": func(c *Content) {
+			c.Parent = &models.EmailParent{MessageID: "forged", ThreadID: "other"}
 		},
 	} {
 		copy := base

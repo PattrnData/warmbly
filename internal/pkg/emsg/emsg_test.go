@@ -77,7 +77,7 @@ func TestEmailBlob_Attachments(t *testing.T) {
 		PlainText: []byte("hi"),
 		HTMLBody:  []byte("<b>hi</b>"),
 		Attachments: []Attachment{
-			{S3Key: "attachments/a/1.pdf", Filename: "report.pdf", MimeType: "application/pdf"},
+			{S3Key: "attachments/a/1.pdf", Filename: "report.pdf", MimeType: "application/pdf", SHA256: "abc123"},
 			{S3Key: "attachments/a/2.png", Filename: "logo.png", MimeType: "image/png"},
 		},
 	}
