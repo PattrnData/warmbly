@@ -20,6 +20,7 @@ const BindingSQL = `WITH eligible AS (
  LEFT JOIN email_accounts_oauth oa ON oa.email_account_id = ea.id AND ea.provider IN ('gmail', 'outlook')
  WHERE t.id = $1 AND t.email_account_id = $2 AND ea.organization_id = $3
    AND ea.worker_id = $4 AND t.message_id = $5 AND t.message_id <> ''
+   AND t.send_payload_hash = $9 AND t.send_payload_hash IS NOT NULL AND t.send_payload_hash <> ''
    AND lower(ea.email) = lower($6) AND ea.provider::text = $7
    AND (t.task_type = 'warmup') = $8
    AND t.status IN ('active','completed') AND ea.status = 'active'
@@ -47,7 +48,7 @@ func (r PGRepository) Claim(ctx context.Context, req Request) (Snapshot, error) 
 	if r.Pool == nil {
 		return snap, errors.New("no database")
 	}
-	err := r.Pool.QueryRow(ctx, BindingSQL, req.TaskID, req.EmailAccountID, req.OrganizationID, req.WorkerID, req.MessageID, req.From, req.Provider, req.IsWarmup).Scan(
+	err := r.Pool.QueryRow(ctx, BindingSQL, req.TaskID, req.EmailAccountID, req.OrganizationID, req.WorkerID, req.MessageID, req.From, req.Provider, req.IsWarmup, req.PayloadHash).Scan(
 		&snap.Provider, &snap.From, &snap.TaskType)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return snap, ErrNotFound

@@ -21,14 +21,15 @@ var ErrDenied = errors.New("send authorization denied or unavailable")
 
 // Request binds the backend decision to the exact queued send and cached mailbox.
 type Request struct {
-	TaskID    uuid.UUID            `json:"task_id"`
-	EmailID   uuid.UUID            `json:"email_account_id"`
-	OrgID     uuid.UUID            `json:"organization_id"`
-	MessageID string               `json:"message_id"`
-	WorkerID  uuid.UUID            `json:"worker_id"`
-	From      string               `json:"from"`
-	Provider  models.InboxProvider `json:"provider"`
-	IsWarmup  bool                 `json:"is_warmup"`
+	TaskID      uuid.UUID            `json:"task_id"`
+	EmailID     uuid.UUID            `json:"email_account_id"`
+	OrgID       uuid.UUID            `json:"organization_id"`
+	MessageID   string               `json:"message_id"`
+	PayloadHash string               `json:"payload_hash"`
+	WorkerID    uuid.UUID            `json:"worker_id"`
+	From        string               `json:"from"`
+	Provider    models.InboxProvider `json:"provider"`
+	IsWarmup    bool                 `json:"is_warmup"`
 }
 
 type response struct {
@@ -57,7 +58,7 @@ func NewHTTPAuthorizer(baseURL, token string, timeout time.Duration) (*HTTPAutho
 
 // Authorize accepts only HTTP 200 with an explicit JSON boolean allowed.
 func (a *HTTPAuthorizer) Authorize(ctx context.Context, decision Request) error {
-	if a == nil || a.client == nil || decision.TaskID == uuid.Nil || decision.EmailID == uuid.Nil || decision.OrgID == uuid.Nil || decision.WorkerID == uuid.Nil || strings.TrimSpace(decision.MessageID) == "" || len(decision.MessageID) > 512 || strings.TrimSpace(decision.From) == "" || !validProvider(decision.Provider) {
+	if a == nil || a.client == nil || decision.TaskID == uuid.Nil || decision.EmailID == uuid.Nil || decision.OrgID == uuid.Nil || decision.WorkerID == uuid.Nil || strings.TrimSpace(decision.MessageID) == "" || len(decision.MessageID) > 512 || len(decision.PayloadHash) != 64 || strings.TrimSpace(decision.From) == "" || !validProvider(decision.Provider) {
 		return ErrDenied
 	}
 	payload, err := json.Marshal(decision)

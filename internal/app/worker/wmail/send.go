@@ -14,6 +14,8 @@ import (
 	"github.com/warmbly/warmbly/internal/config"
 	"github.com/warmbly/warmbly/internal/errx"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/pkg/emsg"
+	"github.com/warmbly/warmbly/internal/pkg/sendpayload"
 )
 
 // Attachment is a fully-resolved attachment ready to be MIME-encoded: the
@@ -49,7 +51,8 @@ type SendRequest struct {
 	UnsubscribeURL string
 	// Attachments, when present, are encoded as multipart/mixed parts after the
 	// multipart/alternative text body. Warmup sends never carry attachments.
-	Attachments []Attachment
+	Attachments    []Attachment
+	AttachmentRefs []emsg.Attachment
 }
 
 // buildSendHeaders assembles the outbound custom headers: the warmup
@@ -92,11 +95,17 @@ func (w *WMail) Send(ctx context.Context, req *SendRequest) *SendResult {
 	if req.IsWarmup {
 		bodyHTML = ""
 	}
+	payloadHash := (sendpayload.Content{
+		From: req.From, MessageID: req.MessageID, To: req.To, CC: req.Cc, BCC: req.Bcc,
+		Subject: req.Subject, Plain: req.BodyPlain, HTML: bodyHTML, InReplyTo: req.InReplyTo,
+		IsWarmup: req.IsWarmup, WarmupToken: req.WarmupToken,
+		UnsubscribeURL: req.UnsubscribeURL, Attachments: req.AttachmentRefs,
+	}).Fingerprint()
 	if w == nil || req.Authorizer == nil || req.EmailID != w.ID ||
 		!strings.EqualFold(req.From, w.Email) || req.Provider != w.EmailType ||
 		req.Authorizer.Authorize(ctx, sendauth.Request{
 			TaskID: req.TaskID, EmailID: req.EmailID, OrgID: req.OrgID,
-			MessageID: req.MessageID, WorkerID: req.WorkerID,
+			MessageID: req.MessageID, WorkerID: req.WorkerID, PayloadHash: payloadHash,
 			From: req.From, Provider: req.Provider, IsWarmup: req.IsWarmup,
 		}) != nil {
 		return deniedSendResult()

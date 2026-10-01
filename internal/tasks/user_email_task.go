@@ -165,7 +165,7 @@ func (s *tasksService) HandleUserEmailTask(task *proto.ProcessTask) *errx.Error 
 	}
 
 	// Persist the binding before publishing: the worker can consume immediately.
-	if err := s.taskRepo.UpdateTaskMessageID(ctx, taskID, messageID); err != nil {
+	if err := s.taskRepo.BindTaskSendPayload(ctx, taskID, messageID, sendFingerprint(emailMsg)); err != nil {
 		sentry.CaptureException(err)
 		return errx.InternalError()
 	}

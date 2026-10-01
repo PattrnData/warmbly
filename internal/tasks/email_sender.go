@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/events"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/pkg/emsg"
+	"github.com/warmbly/warmbly/internal/pkg/sendpayload"
 	"github.com/warmbly/warmbly/internal/repository"
 )
 
@@ -30,6 +32,24 @@ type EmailMessage struct {
 	// bytes from object storage at send time. Refs travel inside the S3 body
 	// blob, never the Avro Kafka event.
 	Attachments []models.AttachmentRef
+}
+
+// sendFingerprint commits to the plaintext fields that reach the provider.
+func sendFingerprint(msg EmailMessage) string {
+	var refs []emsg.Attachment
+	for _, a := range msg.Attachments {
+		refs = append(refs, emsg.Attachment{S3Key: a.S3Key, Filename: a.Filename, MimeType: a.MimeType})
+	}
+	html := msg.BodyHTML
+	if msg.IsWarmup {
+		html = ""
+	}
+	return (sendpayload.Content{
+		From: msg.From, MessageID: msg.MessageID, To: msg.To, CC: msg.CC, BCC: msg.BCC,
+		Subject: msg.Subject, Plain: msg.BodyPlain, HTML: html, InReplyTo: msg.InReplyTo,
+		IsWarmup: msg.IsWarmup, WarmupToken: msg.WarmupToken,
+		UnsubscribeURL: msg.UnsubscribeURL, Attachments: refs,
+	}).Fingerprint()
 }
 
 // EmailSender interface for sending emails via workers

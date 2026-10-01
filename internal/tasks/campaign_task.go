@@ -564,7 +564,7 @@ func (s *tasksService) HandleCampaignTask(task *proto.ProcessTask) *errx.Error {
 	}
 
 	// The send-time gate must see this exact Message-ID before a fast consumer.
-	if err := s.taskRepo.UpdateTaskMessageID(ctx, taskID, messageID); err != nil {
+	if err := s.taskRepo.BindTaskSendPayload(ctx, taskID, messageID, sendFingerprint(emailMsg)); err != nil {
 		sentry.CaptureException(err)
 		return errx.InternalError()
 	}

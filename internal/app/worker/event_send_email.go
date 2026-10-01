@@ -112,6 +112,7 @@ func (w *WorkerService) HandleSendEmail(ctx context.Context, sendEmail models.Se
 		WarmupToken:    sendEmail.WarmupToken,
 		UnsubscribeURL: sendEmail.UnsubscribeURL,
 		Attachments:    attachments,
+		AttachmentRefs: attachmentRefs,
 	})
 	w.recordSendLatency(time.Since(sendStart))
 	w.recordSendOutcome(result)

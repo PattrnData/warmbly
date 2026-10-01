@@ -12,6 +12,8 @@ import (
 	"github.com/warmbly/warmbly/internal/app/worker/sendauth"
 	"github.com/warmbly/warmbly/internal/errx"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/pkg/emsg"
+	"github.com/warmbly/warmbly/internal/pkg/sendpayload"
 )
 
 type fakeAuthorizer func(context.Context, sendauth.Request) error
@@ -51,6 +53,47 @@ func TestSendAuthorizationBeforeProviderForAllProvidersAndModes(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestSendHashesActualProviderPayloadBeforeClaim(t *testing.T) {
+	mail := &WMail{ID: uuid.New(), Email: "sender@example.org", EmailType: models.InboxProviderGoogle}
+	providerCalls := 0
+	mail.sendAttempt = func(context.Context, *SendRequest, string) *SendResult {
+		providerCalls++
+		return &SendResult{Success: true}
+	}
+	refs := []emsg.Attachment{{S3Key: "object", Filename: "one.txt", MimeType: "text/plain"}}
+	req := &SendRequest{
+		TaskID: uuid.New(), EmailID: mail.ID, OrgID: uuid.New(), WorkerID: uuid.New(),
+		MessageID: "msg", From: mail.Email, Provider: mail.EmailType,
+		To: []string{"to@example.org"}, Cc: []string{"cc@example.org"}, Bcc: []string{"bcc@example.org"},
+		Subject: "subject", BodyPlain: "plain", BodyHTML: "<p>html</p>",
+		Attachments:    []Attachment{{Filename: "one.txt", MimeType: "text/plain", Data: []byte("bytes")}},
+		AttachmentRefs: refs,
+	}
+	expected := (sendpayload.Content{
+		From: req.From, MessageID: req.MessageID, To: req.To, CC: req.Cc, BCC: req.Bcc,
+		Subject: req.Subject, Plain: req.BodyPlain, HTML: req.BodyHTML, Attachments: refs,
+	}).Fingerprint()
+	req.Authorizer = fakeAuthorizer(func(_ context.Context, got sendauth.Request) error {
+		if got.PayloadHash != expected {
+			t.Fatalf("worker hash %q differs from producer %q", got.PayloadHash, expected)
+		}
+		return sendauth.ErrDenied
+	})
+	if r := mail.Send(context.Background(), req); r.Success || providerCalls != 0 {
+		t.Fatalf("denied hash reached provider: %+v", r)
+	}
+	req.Subject = "tampered"
+	req.Authorizer = fakeAuthorizer(func(_ context.Context, got sendauth.Request) error {
+		if got.PayloadHash == expected {
+			t.Fatal("changed subject retained hash")
+		}
+		return sendauth.ErrDenied
+	})
+	if r := mail.Send(context.Background(), req); r.Success || providerCalls != 0 {
+		t.Fatalf("tampered send reached provider: %+v", r)
 	}
 }
 

@@ -14,7 +14,7 @@ import (
 )
 
 func validRequest() Request {
-	return Request{TaskID: uuid.New(), EmailID: uuid.New(), OrgID: uuid.New(), WorkerID: uuid.New(), MessageID: "message-id", From: "sender@example.com", Provider: models.InboxProviderGoogle}
+	return Request{TaskID: uuid.New(), EmailID: uuid.New(), OrgID: uuid.New(), WorkerID: uuid.New(), MessageID: "message-id", PayloadHash: strings.Repeat("a", 64), From: "sender@example.com", Provider: models.InboxProviderGoogle}
 }
 
 func TestHTTPAuthorizerFailClosed(t *testing.T) {
