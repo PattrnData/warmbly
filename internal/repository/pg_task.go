@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -795,10 +796,19 @@ func (r *taskRepository) UpdateTaskStatusWithLock(ctx context.Context, taskID uu
 // message_id <> ”, so without persisting it here the reply path never finds a
 // prior message to reply to and warmup conversations never thread.
 func (r *taskRepository) UpdateTaskMessageID(ctx context.Context, taskID uuid.UUID, messageID string) error {
-	_, err := r.db.Exec(ctx,
+	if messageID == "" {
+		return fmt.Errorf("empty task message_id")
+	}
+	result, err := r.db.Exec(ctx,
 		`UPDATE tasks SET message_id = $1, updated_at = NOW() WHERE id = $2`,
 		messageID, taskID)
-	return err
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("task %s not found for message_id binding", taskID)
+	}
+	return nil
 }
 
 // UpdateCampaignTaskTracking updates the campaign task with contact_id and sequence_id

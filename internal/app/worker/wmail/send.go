@@ -82,96 +82,54 @@ type SendResult struct {
 	Error             *errx.MailError
 }
 
-const maxSendRetries = 3
-
-// Send attempts to send an email with retry for transient failures
+// Send performs one authorized provider attempt. A lost provider response can
+// mean the email was accepted, so a retry (even after reauthorization) is unsafe.
 func (w *WMail) Send(ctx context.Context, req *SendRequest) *SendResult {
 	if req == nil {
 		return deniedSendResult()
 	}
-	// For warmup emails, ensure HTML is empty
 	bodyHTML := req.BodyHTML
 	if req.IsWarmup {
 		bodyHTML = ""
 	}
-
-	var result *SendResult
-	providerAttempted := false
-	for attempt := 0; attempt <= maxSendRetries; attempt++ {
-		result = &SendResult{Success: false, SentAt: time.Now()}
-		// Never reuse a decision across retries.
-		if w == nil || req.Authorizer == nil || req.EmailID != w.ID ||
-			!strings.EqualFold(req.From, w.Email) || req.Provider != w.EmailType ||
-			req.Authorizer.Authorize(ctx, sendauth.Request{
-				TaskID: req.TaskID, EmailID: req.EmailID, OrgID: req.OrgID,
-				MessageID: req.MessageID, WorkerID: req.WorkerID,
-				From: req.From, Provider: req.Provider, IsWarmup: req.IsWarmup,
-			}) != nil {
-			return deniedSendResult(providerAttempted)
-		}
-
-		providerAttempted = true
-		if w.sendAttempt != nil {
-			result = w.sendAttempt(ctx, req, bodyHTML)
-		} else {
-			switch w.EmailType {
-			case models.InboxProviderGoogle:
-				result = w.sendViaGmail(ctx, req, bodyHTML)
-			case models.InboxProviderOutlook:
-				result = w.sendViaGraph(ctx, req, bodyHTML)
-			case models.InboxProviderSMTPIMAP:
-				result = w.sendViaSMTP(ctx, req, bodyHTML)
-			default:
-				result.Error = errx.MError(
-					errx.MailErrorCritical,
-					errx.MailErrorCodeUnsupported,
-					"Unsupported email provider",
-					errx.MailErrorResolveMethodNone,
-				)
-				return result
-			}
-
-		}
-		if result.Success {
-			result.ProviderAttempted = true
-			return result
-		}
-		result.ProviderAttempted = true
-
-		// Graph sendMail can accept a request even when its response is lost.
-		// Neither a transient error nor a fresh authorization check proves
-		// non-acceptance; a second attempt could deliver the same email twice.
-		// This includes app-only shared mailboxes (the same Graph transport).
-		if w.EmailType == models.InboxProviderOutlook {
-			return result
-		}
-
-		// Don't retry critical/auth errors - only transient ones
-		if result.Error != nil && result.Error.Type == errx.MailErrorCritical {
-			return result
-		}
-
-		if attempt < maxSendRetries {
-			backoff := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s, 4s
-			select {
-			case <-ctx.Done():
-				return result
-			case <-time.After(backoff):
-			}
-		}
+	if w == nil || req.Authorizer == nil || req.EmailID != w.ID ||
+		!strings.EqualFold(req.From, w.Email) || req.Provider != w.EmailType ||
+		req.Authorizer.Authorize(ctx, sendauth.Request{
+			TaskID: req.TaskID, EmailID: req.EmailID, OrgID: req.OrgID,
+			MessageID: req.MessageID, WorkerID: req.WorkerID,
+			From: req.From, Provider: req.Provider, IsWarmup: req.IsWarmup,
+		}) != nil {
+		return deniedSendResult()
 	}
 
+	result := &SendResult{SentAt: time.Now(), ProviderAttempted: true}
+	if w.sendAttempt != nil {
+		result = w.sendAttempt(ctx, req, bodyHTML)
+	} else {
+		switch w.EmailType {
+		case models.InboxProviderGoogle:
+			result = w.sendViaGmail(ctx, req, bodyHTML)
+		case models.InboxProviderOutlook:
+			result = w.sendViaGraph(ctx, req, bodyHTML)
+		case models.InboxProviderSMTPIMAP:
+			result = w.sendViaSMTP(ctx, req, bodyHTML)
+		default:
+			result.Error = errx.MError(
+				errx.MailErrorCritical,
+				errx.MailErrorCodeUnsupported,
+				"Unsupported email provider",
+				errx.MailErrorResolveMethodNone,
+			)
+			return result
+		}
+	}
+	result.ProviderAttempted = true
 	return result
 }
 
-func deniedSendResult(providerAttempted ...bool) *SendResult {
-	attempted := len(providerAttempted) > 0 && providerAttempted[0]
-	code := errx.MailErrorCodeInternalSendAuthorization
-	if attempted {
-		code = errx.MailErrorCodeInternalSendAuthorizationAfterAttempt
-	}
-	return &SendResult{SentAt: time.Now(), ProviderAttempted: attempted, Error: errx.MError(
-		errx.MailErrorCritical, code,
+func deniedSendResult() *SendResult {
+	return &SendResult{SentAt: time.Now(), Error: errx.MError(
+		errx.MailErrorCritical, errx.MailErrorCodeInternalSendAuthorization,
 		"Internal send authorization denied or unavailable", errx.MailErrorResolveMethodNone,
 	)}
 }

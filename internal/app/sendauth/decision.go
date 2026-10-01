@@ -23,7 +23,7 @@ type Request struct {
 }
 type Snapshot struct{ Provider, From, TaskType string }
 type Repository interface {
-	Lookup(context.Context, Request) (Snapshot, error)
+	Claim(context.Context, Request) (Snapshot, error)
 }
 type Service struct{ Repository Repository }
 
@@ -31,6 +31,6 @@ func (s Service) Allowed(ctx context.Context, r Request) bool {
 	if s.Repository == nil || r.TaskID == uuid.Nil || r.EmailAccountID == uuid.Nil || r.OrganizationID == uuid.Nil || r.WorkerID == uuid.Nil || strings.TrimSpace(r.MessageID) == "" || len(r.MessageID) > 512 || strings.TrimSpace(r.From) == "" || r.Provider == "" {
 		return false
 	}
-	snap, err := s.Repository.Lookup(ctx, r)
+	snap, err := s.Repository.Claim(ctx, r)
 	return err == nil && strings.EqualFold(snap.From, r.From) && snap.Provider == r.Provider && r.IsWarmup == (snap.TaskType == "warmup")
 }

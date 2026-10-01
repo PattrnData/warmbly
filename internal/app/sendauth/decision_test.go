@@ -10,7 +10,7 @@ import (
 
 type lookupFunc func(context.Context, Request) (Snapshot, error)
 
-func (f lookupFunc) Lookup(ctx context.Context, r Request) (Snapshot, error) { return f(ctx, r) }
+func (f lookupFunc) Claim(ctx context.Context, r Request) (Snapshot, error) { return f(ctx, r) }
 
 func TestSendAuthorizationFailsClosedAndBindsTask(t *testing.T) {
 	account, org, worker, task := uuid.New(), uuid.New(), uuid.New(), uuid.New()

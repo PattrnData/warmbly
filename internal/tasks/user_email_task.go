@@ -164,6 +164,11 @@ func (s *tasksService) HandleUserEmailTask(task *proto.ProcessTask) *errx.Error 
 		Tracking:  nil,
 	}
 
+	// Persist the binding before publishing: the worker can consume immediately.
+	if err := s.taskRepo.UpdateTaskMessageID(ctx, taskID, messageID); err != nil {
+		sentry.CaptureException(err)
+		return errx.InternalError()
+	}
 	if err := s.emailSender.Send(ctx, taskID, emailMsg, *account); err != nil {
 		s.taskRepo.RecordTaskFailure(ctx, taskID, "Send failed", err.Error())
 		if s.advanced != nil {
@@ -176,12 +181,9 @@ func (s *tasksService) HandleUserEmailTask(task *proto.ProcessTask) *errx.Error 
 		return nil
 	}
 
-	// STEP 10: Update task record
+	// STEP 10: Message-ID was persisted before publication.
 	taskRecord.MessageID = messageID
 	taskRecord.Status = "completed"
-	if err := s.taskRepo.UpdateTaskMessageID(ctx, taskID, messageID); err != nil {
-		log.Warn().Err(err).Str("task_id", taskID.String()).Msg("Failed to persist user email task message_id")
-	}
 
 	// STEP 11: Mark task completed (with advisory lock)
 	if err := s.taskRepo.UpdateTaskStatusWithLock(ctx, taskID, "completed"); err != nil {
