@@ -38,7 +38,7 @@ type EmailMessage struct {
 func sendFingerprint(msg EmailMessage) string {
 	var refs []emsg.Attachment
 	for _, a := range msg.Attachments {
-		refs = append(refs, emsg.Attachment{S3Key: a.S3Key, Filename: a.Filename, MimeType: a.MimeType})
+		refs = append(refs, emsg.Attachment{S3Key: a.S3Key, Filename: a.Filename, MimeType: a.MimeType, SHA256: a.SHA256})
 	}
 	html := msg.BodyHTML
 	if msg.IsWarmup {
@@ -72,6 +72,11 @@ func NewEmailSender(emailRepo repository.EmailRepository, publisher events.Publi
 
 // Send publishes an email to the worker service for sending
 func (s *emailSender) Send(ctx context.Context, taskID uuid.UUID, msg EmailMessage, account models.Email) error {
+	for _, a := range msg.Attachments {
+		if len(a.SHA256) != 64 {
+			return fmt.Errorf("attachment %q has no upload digest; re-upload before sending", a.Filename)
+		}
+	}
 	// Get worker ID for this email account
 	workerID := account.WorkerID
 	if workerID == nil {

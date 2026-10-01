@@ -390,6 +390,7 @@ func (s *tasksService) HandleCampaignTask(task *proto.ProcessTask) *errx.Error {
 					S3Key:    a.S3Key,
 					Filename: a.Filename,
 					MimeType: a.MimeType,
+					SHA256:   a.SHA256,
 				})
 			}
 		}
