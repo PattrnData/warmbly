@@ -63,6 +63,7 @@ import (
 	"github.com/warmbly/warmbly/internal/app/releases"
 	"github.com/warmbly/warmbly/internal/app/replyclassify"
 	"github.com/warmbly/warmbly/internal/app/research"
+	"github.com/warmbly/warmbly/internal/app/sendauth"
 	"github.com/warmbly/warmbly/internal/app/sequence"
 	"github.com/warmbly/warmbly/internal/app/settings"
 	"github.com/warmbly/warmbly/internal/app/skills"
@@ -232,6 +233,7 @@ func main() {
 	var twofaService twofa.Service
 	var contactRepoForHandler repository.ContactRepository
 	var attachmentRepoForHandler repository.AttachmentRepository
+	var sendAuthorization *sendauth.Service
 	var leadSyncServiceForHandler leadsync.Service
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -339,6 +341,7 @@ func main() {
 			sentry.CaptureException(err)
 			log.Fatal(err)
 		}
+		sendAuthorization = &sendauth.Service{Repository: sendauth.PGRepository{Pool: primaryDB.Pool}}
 
 		// Run database migrations
 		log.Println("Running database migrations...")
@@ -1440,6 +1443,7 @@ func main() {
 		UserRepo:                 userRepoForHandler,
 		OrgRepo:                  organizationRepoForHandler,
 		AttachmentRepo:           attachmentRepoForHandler,
+		SendAuthorization:        sendAuthorization,
 		StorageBackendRepo:       storageBackendRepo,
 		CloudCredentialRepo:      cloudCredentialRepo,
 		ProvisioningTemplateRepo: provisioningTemplateRepo,

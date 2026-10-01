@@ -34,6 +34,7 @@ import (
 	"github.com/warmbly/warmbly/internal/app/referral"
 	"github.com/warmbly/warmbly/internal/app/releases"
 	"github.com/warmbly/warmbly/internal/app/research"
+	"github.com/warmbly/warmbly/internal/app/sendauth"
 	"github.com/warmbly/warmbly/internal/app/sequence"
 	"github.com/warmbly/warmbly/internal/app/skills"
 	"github.com/warmbly/warmbly/internal/app/socket"
@@ -65,9 +66,10 @@ import (
 )
 
 type Handler struct {
-	AuthService    auth.AuthService
-	TokenService   token.TokenService
-	PasskeyService passkey.Service
+	SendAuthorization *sendauth.Service
+	AuthService       auth.AuthService
+	TokenService      token.TokenService
+	PasskeyService    passkey.Service
 
 	// Native-app social sign-in discovery (GET /auth/providers).
 	ExternalAuthProviders models.ExternalAuthProviders
