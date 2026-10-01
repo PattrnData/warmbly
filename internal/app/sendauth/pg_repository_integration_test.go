@@ -60,14 +60,14 @@ func TestPGClaimLifecycle(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	migration, err := os.ReadFile("../../infrastructure/db/migrations/000084_send_attempt_claim.up.sql")
+	migration, err := os.ReadFile("../../infrastructure/db/migrations/000085_send_attempt_claim.up.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, string(migration)); err != nil {
 		t.Fatal(err)
 	}
-	migration, err = os.ReadFile("../../infrastructure/db/migrations/000085_task_send_payload.up.sql")
+	migration, err = os.ReadFile("../../infrastructure/db/migrations/000086_task_send_payload.up.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
