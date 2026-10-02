@@ -51,6 +51,12 @@ func TestReconnectRepositoryPostgres(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if _, err := admin.Exec(ctx, "CREATE TABLE "+schema+".tasks (email_account_id uuid, status text)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.Exec(ctx, "ALTER TABLE "+schema+".email_accounts ALTER COLUMN warmup_tag SET DEFAULT ''"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := admin.Exec(ctx, "ALTER TABLE "+schema+".email_accounts ADD PRIMARY KEY (id)"); err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +92,8 @@ func TestReconnectRepositoryPostgres(t *testing.T) {
 	seed(id, user, org, "owner@example.test")
 	seed(otherID, otherUser, otherOrg, "other@example.test")
 	account, xerr := repo.Get(ctx, org.String(), id.String())
-	if xerr != nil || account == nil || account.UserID != user.String() || account.OrganizationID == nil || *account.OrganizationID != org {
-		t.Fatalf("scoped lookup did not hydrate owner/org: account=%+v err=%v", account, xerr)
+	if xerr != nil || account == nil || account.UserID != user.String() || account.OrganizationID == nil || *account.OrganizationID != org || account.WorkerID != nil {
+		t.Fatalf("scoped lookup did not hydrate owner/org/worker: account=%+v err=%v", account, xerr)
 	}
 	if _, xerr := repo.Get(ctx, otherOrg.String(), id.String()); xerr == nil {
 		t.Fatal("cross-organization Get succeeded")
@@ -150,5 +156,91 @@ func TestReconnectRepositoryPostgres(t *testing.T) {
 	}
 	if _, xerr := repo.ReconnectOutlookCredentialVersion(ctx, user.String(), org, id); xerr != errx.ErrEmailOnboardState {
 		t.Fatal("app-only account accepted for delegated reconnect")
+	}
+
+	// Parentless exact target, bound to owner, org, worker and prior credential.
+	sharedID := uuid.MustParse("af571c6e-e6f0-4cb9-90fe-a7d5105babd7")
+	workerID := uuid.New()
+	seed(sharedID, user, org, "shared@example.test")
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts SET worker_id=$1 WHERE id=$2`, workerID, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	version, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, workerID, "shared@example.test")
+	if xerr != nil || version == "" {
+		t.Fatalf("parentless target preflight: %v", xerr)
+	}
+	if _, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, uuid.New(), "shared@example.test"); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("wrong worker accepted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, uuid.New(), "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("wrong worker converted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, workerID, "wrong@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("wrong email converted")
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO tasks(email_account_id,status) VALUES($1,'pending')`, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	if _, xerr := repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, workerID, "shared@example.test"); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("queued sender accepted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, workerID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("queued sender converted")
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM tasks WHERE email_account_id=$1`, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE email_accounts_oauth SET access_token='changed' WHERE email_account_id=$1`, sharedID); err != nil {
+		t.Fatal(err)
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, workerID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("stale credential converted")
+	}
+	version, xerr = repo.OutlookAppOnlyConversionVersion(ctx, user.String(), org, sharedID, workerID, "shared@example.test")
+	if xerr != nil {
+		t.Fatal(xerr)
+	}
+	results := make(chan *errx.Error, 2)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results <- repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, workerID, "shared@example.test", version)
+		}()
+	}
+	wg.Wait()
+	close(results)
+	success, stale = 0, 0
+	for result := range results {
+		if result == nil {
+			success++
+		} else if result == errx.ErrEmailOnboardState {
+			stale++
+		} else {
+			t.Fatalf("unexpected conversion error: %v", result)
+		}
+	}
+	if success != 1 || stale != 1 {
+		t.Fatalf("concurrent conversions: success=%d stale=%d", success, stale)
+	}
+	var targetToken, targetAccess, targetStatus string
+	var actualWorker uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT o.refresh_token,o.access_token,ea.status,ea.worker_id FROM email_accounts_oauth o JOIN email_accounts ea ON ea.id=o.email_account_id WHERE ea.id=$1`, sharedID).Scan(&targetToken, &targetAccess, &targetStatus, &actualWorker); err != nil {
+		t.Fatal(err)
+	}
+	if targetToken != models.GraphAppOnlyRefreshToken || targetAccess != "" || targetStatus != "inactive" || actualWorker != workerID {
+		t.Fatal("conversion modified target identity or failed credential-mode change")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, sharedID, workerID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("replay converted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, otherUser.String(), org, sharedID, workerID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("cross-owner converted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), otherOrg, sharedID, workerID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("cross-org converted")
+	}
+	if xerr := repo.ConvertOutlookAppOnly(ctx, user.String(), org, uuid.MustParse("a5f28cfb-b10f-4597-b445-28e647e0dd92"), workerID, "shared@example.test", version); xerr != errx.ErrEmailOnboardState {
+		t.Fatal("fifth sender converted")
 	}
 }

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feat/warmbly-twentycrm-approval-pack]
   pull_request:
-    branches: [main, feat/warmbly-twentycrm-approval-pack]
+    branches: [main, feat/warmbly-twentycrm-approval-pack, fix/exact-four-parentless-app-only-20261001]
 
 # Default token only gets `contents: read` on PRs from forks; the
 # dorny/paths-filter action needs to list PR files via the GitHub
