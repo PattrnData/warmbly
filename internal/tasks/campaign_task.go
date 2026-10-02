@@ -390,6 +390,7 @@ func (s *tasksService) HandleCampaignTask(task *proto.ProcessTask) *errx.Error {
 					S3Key:    a.S3Key,
 					Filename: a.Filename,
 					MimeType: a.MimeType,
+					SHA256:   a.SHA256,
 				})
 			}
 		}
@@ -563,6 +564,11 @@ func (s *tasksService) HandleCampaignTask(task *proto.ProcessTask) *errx.Error {
 		Attachments:    attachmentRefs,
 	}
 
+	// The send-time gate must see this exact Message-ID before a fast consumer.
+	if err := s.taskRepo.BindTaskSendPayload(ctx, taskID, messageID, sendFingerprint(emailMsg)); err != nil {
+		sentry.CaptureException(err)
+		return errx.InternalError()
+	}
 	if err := s.emailSender.Send(ctx, taskID, emailMsg, *account); err != nil {
 		// Failed to send to worker, record failure
 		s.taskRepo.RecordTaskFailure(ctx, taskID, "Send failed", err.Error())
@@ -621,13 +627,9 @@ func (s *tasksService) HandleCampaignTask(task *proto.ProcessTask) *errx.Error {
 		return nil
 	}
 
-	// STEP 16: Store sent email metadata (encrypted) in database
-	// Note: Full email stored in Cassandra by email sync service
+	// STEP 16: The Message-ID was persisted before publication.
 	taskRecord.MessageID = messageID
 	taskRecord.Status = "completed"
-	if err := s.taskRepo.UpdateTaskMessageID(ctx, taskID, messageID); err != nil {
-		log.Warn().Err(err).Str("task_id", taskID.String()).Msg("Failed to persist campaign task message_id")
-	}
 
 	// STEP 17: Update campaign progress
 	if err := s.campaignProgressRepo.RecordEmailSent(ctx, campaign.ID, contact.ID, sequence.ID); err != nil {

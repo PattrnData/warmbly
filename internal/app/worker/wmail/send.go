@@ -2,17 +2,22 @@ package wmail
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/warmbly/warmbly/internal/app/worker/sendauth"
 	"github.com/warmbly/warmbly/internal/client/goog"
 	"github.com/warmbly/warmbly/internal/client/msgraph"
 	"github.com/warmbly/warmbly/internal/client/smtpimap/smtp"
 	"github.com/warmbly/warmbly/internal/config"
 	"github.com/warmbly/warmbly/internal/errx"
 	"github.com/warmbly/warmbly/internal/models"
+	"github.com/warmbly/warmbly/internal/pkg/emsg"
+	"github.com/warmbly/warmbly/internal/pkg/sendpayload"
 )
 
 // Attachment is a fully-resolved attachment ready to be MIME-encoded: the
@@ -26,6 +31,12 @@ type Attachment struct {
 // SendRequest contains all parameters needed to send an email
 type SendRequest struct {
 	TaskID      uuid.UUID
+	EmailID     uuid.UUID
+	OrgID       uuid.UUID
+	WorkerID    uuid.UUID
+	From        string
+	Provider    models.InboxProvider
+	Authorizer  sendauth.Authorizer
 	To          []string
 	Cc          []string
 	Bcc         []string
@@ -42,7 +53,8 @@ type SendRequest struct {
 	UnsubscribeURL string
 	// Attachments, when present, are encoded as multipart/mixed parts after the
 	// multipart/alternative text body. Warmup sends never carry attachments.
-	Attachments []Attachment
+	Attachments    []Attachment
+	AttachmentRefs []emsg.Attachment
 }
 
 // buildSendHeaders assembles the outbound custom headers: the warmup
@@ -67,27 +79,54 @@ func buildSendHeaders(req *SendRequest) map[string]string {
 
 // SendResult contains the result of a send operation
 type SendResult struct {
-	Success       bool
-	MessageID     string
-	ProviderMsgID string
-	SentAt        time.Time
-	Error         *errx.MailError
+	Success           bool
+	ProviderAttempted bool
+	MessageID         string
+	ProviderMsgID     string
+	SentAt            time.Time
+	Error             *errx.MailError
 }
 
-const maxSendRetries = 3
-
-// Send attempts to send an email with retry for transient failures
+// Send performs one authorized provider attempt. A lost provider response can
+// mean the email was accepted, so a retry (even after reauthorization) is unsafe.
 func (w *WMail) Send(ctx context.Context, req *SendRequest) *SendResult {
-	// For warmup emails, ensure HTML is empty
+	if req == nil {
+		return deniedSendResult()
+	}
 	bodyHTML := req.BodyHTML
 	if req.IsWarmup {
 		bodyHTML = ""
 	}
+	if len(req.Attachments) != len(req.AttachmentRefs) {
+		return deniedSendResult()
+	}
+	for i, ref := range req.AttachmentRefs {
+		a := req.Attachments[i]
+		if len(ref.SHA256) != 64 || ref.SHA256 != fmt.Sprintf("%x", sha256.Sum256(a.Data)) ||
+			ref.Filename != a.Filename || (ref.MimeType != a.MimeType && !(ref.MimeType == "" && a.MimeType == "application/octet-stream")) {
+			return deniedSendResult()
+		}
+	}
+	payloadHash := (sendpayload.Content{
+		From: req.From, MessageID: req.MessageID, To: req.To, CC: req.Cc, BCC: req.Bcc,
+		Subject: req.Subject, Plain: req.BodyPlain, HTML: bodyHTML, InReplyTo: req.InReplyTo,
+		IsWarmup: req.IsWarmup, WarmupToken: req.WarmupToken,
+		UnsubscribeURL: req.UnsubscribeURL, Attachments: req.AttachmentRefs, Parent: req.Parent,
+	}).Fingerprint()
+	if w == nil || req.Authorizer == nil || req.EmailID != w.ID ||
+		!strings.EqualFold(req.From, w.Email) || req.Provider != w.EmailType ||
+		req.Authorizer.Authorize(ctx, sendauth.Request{
+			TaskID: req.TaskID, EmailID: req.EmailID, OrgID: req.OrgID,
+			MessageID: req.MessageID, WorkerID: req.WorkerID, PayloadHash: payloadHash,
+			From: req.From, Provider: req.Provider, IsWarmup: req.IsWarmup,
+		}) != nil {
+		return deniedSendResult()
+	}
 
-	var result *SendResult
-	for attempt := 0; attempt <= maxSendRetries; attempt++ {
-		result = &SendResult{Success: false, SentAt: time.Now()}
-
+	result := &SendResult{SentAt: time.Now(), ProviderAttempted: true}
+	if w.sendAttempt != nil {
+		result = w.sendAttempt(ctx, req, bodyHTML)
+	} else {
 		switch w.EmailType {
 		case models.InboxProviderGoogle:
 			result = w.sendViaGmail(ctx, req, bodyHTML)
@@ -104,27 +143,16 @@ func (w *WMail) Send(ctx context.Context, req *SendRequest) *SendResult {
 			)
 			return result
 		}
-
-		if result.Success {
-			return result
-		}
-
-		// Don't retry critical/auth errors - only transient ones
-		if result.Error != nil && result.Error.Type == errx.MailErrorCritical {
-			return result
-		}
-
-		if attempt < maxSendRetries {
-			backoff := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s, 4s
-			select {
-			case <-ctx.Done():
-				return result
-			case <-time.After(backoff):
-			}
-		}
 	}
-
+	result.ProviderAttempted = true
 	return result
+}
+
+func deniedSendResult() *SendResult {
+	return &SendResult{SentAt: time.Now(), Error: errx.MError(
+		errx.MailErrorCritical, errx.MailErrorCodeInternalSendAuthorization,
+		"Internal send authorization denied or unavailable", errx.MailErrorResolveMethodNone,
+	)}
 }
 
 // sendViaGmail sends an email using the Gmail API

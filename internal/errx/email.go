@@ -50,6 +50,11 @@ const (
 	MailErrorCodeRecipientRejected MailErrorCode = "RECIPIENT_REJECTED"
 	MailErrorCodeQuotaExceeded     MailErrorCode = "QUOTA_EXCEEDED"
 	MailErrorCodeAccountSuspended  MailErrorCode = "ACCOUNT_SUSPENDED"
+	// Internal send policy/availability failures are not provider-account errors.
+	MailErrorCodeInternalSendAuthorization MailErrorCode = "INTERNAL_SEND_AUTHORIZATION_UNAVAILABLE"
+	// A prior provider attempt may have succeeded despite a transient response;
+	// this result must never be automatically replayed.
+	MailErrorCodeInternalSendAuthorizationAfterAttempt MailErrorCode = "INTERNAL_SEND_AUTHORIZATION_UNCERTAIN"
 )
 
 var MailErrorCodeGoogleUnknown = func(code int) MailErrorCode {

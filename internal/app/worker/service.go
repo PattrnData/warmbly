@@ -6,6 +6,7 @@ import (
 
 	"github.com/warmbly/warmbly/internal/app/cipher"
 	"github.com/warmbly/warmbly/internal/app/worker/mailmanager"
+	"github.com/warmbly/warmbly/internal/app/worker/sendauth"
 	"github.com/warmbly/warmbly/internal/config"
 	"github.com/warmbly/warmbly/internal/infrastructure/cache"
 	"github.com/warmbly/warmbly/internal/infrastructure/codec"
@@ -27,6 +28,7 @@ type WorkerService struct {
 	Cache                     *cache.Cache
 	Storage                   storage.Store
 	EmailMessageMapRepository repository.EmailMessageMapRepository
+	SendAuthorizer            sendauth.Authorizer
 
 	// OauthInbox supplies the provider OAuth configs (client id/secret +
 	// endpoint) the worker needs to refresh delegated tokens locally. Cfg is not

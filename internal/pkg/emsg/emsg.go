@@ -9,7 +9,7 @@ import (
 )
 
 const Magic = "EMSG"
-const Version = 1
+const Version = 2
 
 // Bitmask flags for sections
 const (
@@ -26,6 +26,7 @@ type Attachment struct {
 	S3Key    string
 	Filename string
 	MimeType string
+	SHA256   string
 }
 
 // EmailBlob represents a binary-encoded email body and metadata.
@@ -41,7 +42,7 @@ type EmailBlob struct {
 //
 // where each body section is uint32-length-prefixed and only present when its
 // flag bit is set. The attachments section, when present, is a uint32 count
-// followed by that many (s3key, filename, mimetype) triples of length-prefixed
+// followed by that many (s3key, filename, mimetype, sha256) tuples of length-prefixed
 // strings. Attachment metadata travels here (inside the S3 body blob), not in
 // the Avro Kafka event, so the published worker event contract is unchanged.
 func (b *EmailBlob) EncodeBinary() ([]byte, error) {
@@ -73,7 +74,7 @@ func (b *EmailBlob) EncodeBinary() ([]byte, error) {
 		buf.Write(p)
 	}
 
-	// Attachments section: [count] then [len][str] x3 per attachment.
+	// Attachments section: [count] then [len][str] x4 per attachment.
 	if flags&FlagAttachments != 0 {
 		binary.Write(buf, binary.BigEndian, uint32(len(b.Attachments)))
 		writeStr := func(s string) {
@@ -84,6 +85,7 @@ func (b *EmailBlob) EncodeBinary() ([]byte, error) {
 			writeStr(a.S3Key)
 			writeStr(a.Filename)
 			writeStr(a.MimeType)
+			writeStr(a.SHA256)
 		}
 	}
 
@@ -101,7 +103,7 @@ func DecodeBinary(r io.Reader) (*EmailBlob, error) {
 		return nil, errors.New("invalid magic header")
 	}
 	version := header[4]
-	if version != Version {
+	if version != 1 && version != Version {
 		return nil, fmt.Errorf("unsupported version: %d", version)
 	}
 
@@ -154,10 +156,18 @@ func DecodeBinary(r io.Reader) (*EmailBlob, error) {
 			if err != nil {
 				return nil, err
 			}
+			var digest string
+			if version >= 2 {
+				digest, err = readStr()
+				if err != nil {
+					return nil, err
+				}
+			}
 			b.Attachments = append(b.Attachments, Attachment{
 				S3Key:    s3Key,
 				Filename: filename,
 				MimeType: mimeType,
+				SHA256:   digest,
 			})
 		}
 	}

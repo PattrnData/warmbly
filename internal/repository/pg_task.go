@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -136,6 +137,7 @@ type TaskRepository interface {
 	CreateWarmupTaskWithLock(ctx context.Context, task *Task, warmupTask *WarmupTask) (bool, error)
 	UpdateTaskStatusWithLock(ctx context.Context, taskID uuid.UUID, status string) error
 	UpdateTaskMessageID(ctx context.Context, taskID uuid.UUID, messageID string) error
+	BindTaskSendPayload(ctx context.Context, taskID uuid.UUID, messageID, payloadHash string) error
 
 	// Update campaign task with contact/sequence IDs (for tracking)
 	UpdateCampaignTaskTracking(ctx context.Context, taskID, contactID, sequenceID uuid.UUID) error
@@ -802,10 +804,36 @@ func (r *taskRepository) UpdateTaskStatusWithLock(ctx context.Context, taskID uu
 // message_id <> ”, so without persisting it here the reply path never finds a
 // prior message to reply to and warmup conversations never thread.
 func (r *taskRepository) UpdateTaskMessageID(ctx context.Context, taskID uuid.UUID, messageID string) error {
-	_, err := r.db.Exec(ctx,
+	if messageID == "" {
+		return fmt.Errorf("empty task message_id")
+	}
+	result, err := r.db.Exec(ctx,
 		`UPDATE tasks SET message_id = $1, updated_at = NOW() WHERE id = $2`,
 		messageID, taskID)
-	return err
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("task %s not found for message_id binding", taskID)
+	}
+	return nil
+}
+
+// BindTaskSendPayload persists the pre-publication commitment once only.
+func (r *taskRepository) BindTaskSendPayload(ctx context.Context, taskID uuid.UUID, messageID, payloadHash string) error {
+	if messageID == "" || len(payloadHash) != 64 {
+		return fmt.Errorf("invalid task send binding")
+	}
+	result, err := r.db.Exec(ctx, `UPDATE tasks SET message_id = $2, send_payload_hash = $3, updated_at = NOW()
+		WHERE id = $1 AND send_payload_hash IS NULL AND (message_id IS NULL OR message_id = '')
+		AND NOT EXISTS (SELECT 1 FROM send_attempt_claims WHERE task_id = $1)`, taskID, messageID, payloadHash)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("task %s already bound or missing", taskID)
+	}
+	return nil
 }
 
 // UpdateCampaignTaskTracking updates the campaign task with contact_id and sequence_id

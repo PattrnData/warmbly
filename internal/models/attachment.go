@@ -17,6 +17,7 @@ type CampaignAttachment struct {
 	Size       int64      `json:"size"`
 	MimeType   string     `json:"mime_type"`
 	S3Key      string     `json:"s3_key"`
+	SHA256     string     `json:"sha256"`
 	CreatedAt  time.Time  `json:"created_at"`
 }
 
@@ -26,4 +27,5 @@ type AttachmentRef struct {
 	S3Key    string `json:"s3_key"`
 	Filename string `json:"filename"`
 	MimeType string `json:"mime_type"`
+	SHA256   string `json:"sha256"`
 }

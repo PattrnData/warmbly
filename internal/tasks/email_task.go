@@ -274,13 +274,6 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 
 	// STEP 9: Generate Message-ID
 	messageID := generateMessageID(account.Email)
-	// Persist it now so the reply path (GetLatestReplyCandidate, which filters
-	// message_id <> '') can find this send as a thread parent on a later turn.
-	// Without this the warmup reply/threading path never fires.
-	if err := s.taskRepo.UpdateTaskMessageID(ctx, taskID, messageID); err != nil {
-		log.Warn().Err(err).Str("task_id", taskID.String()).Msg("Failed to persist warmup task message_id")
-	}
-
 	// STEP 9.5: Generate warmup verification token
 	var warmupTokenStr string
 	warmupToken := uuid.New()
@@ -324,6 +317,11 @@ func (s *tasksService) HandleEmailTask(task *proto.ProcessTask) *errx.Error {
 		IsWarmup:    true,
 		Tracking:    nil, // No tracking for warmup
 		WarmupToken: warmupTokenStr,
+	}
+	// Commit the intended content before the worker can consume the event.
+	if err := s.taskRepo.BindTaskSendPayload(ctx, taskID, messageID, sendFingerprint(emailMsg)); err != nil {
+		sentry.CaptureException(err)
+		return errx.InternalError()
 	}
 
 	if err := s.emailSender.Send(ctx, taskID, emailMsg, *account); err != nil {

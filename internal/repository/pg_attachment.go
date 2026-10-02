@@ -31,21 +31,21 @@ func NewAttachmentRepository(database *db.DB) AttachmentRepository {
 	return &attachmentRepository{DB: database}
 }
 
-const attachmentCols = `id, campaign_id, sequence_id, user_id, filename, size, mime_type, s3_key, created_at`
+const attachmentCols = `id, campaign_id, sequence_id, user_id, filename, size, mime_type, s3_key, sha256, created_at`
 
 func scanAttachment(row pgx.Row, a *models.CampaignAttachment) error {
 	return row.Scan(
 		&a.ID, &a.CampaignID, &a.SequenceID, &a.UserID,
-		&a.Filename, &a.Size, &a.MimeType, &a.S3Key, &a.CreatedAt,
+		&a.Filename, &a.Size, &a.MimeType, &a.S3Key, &a.SHA256, &a.CreatedAt,
 	)
 }
 
 func (r *attachmentRepository) Create(ctx context.Context, att *models.CampaignAttachment) error {
 	return scanAttachment(r.DB.QueryRow(ctx, `
-		INSERT INTO campaign_attachments (campaign_id, sequence_id, user_id, filename, size, mime_type, s3_key)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO campaign_attachments (campaign_id, sequence_id, user_id, filename, size, mime_type, s3_key, sha256)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING `+attachmentCols,
-		att.CampaignID, att.SequenceID, att.UserID, att.Filename, att.Size, att.MimeType, att.S3Key,
+		att.CampaignID, att.SequenceID, att.UserID, att.Filename, att.Size, att.MimeType, att.S3Key, att.SHA256,
 	), att)
 }
 
