@@ -200,10 +200,17 @@ func (s *emailService) OAuthFinish(ctx context.Context, userID string, orgID *uu
 	}
 	if reconnect != nil {
 		if strings.TrimSpace(owner.Email) == "" || tok.AccessToken == "" || tok.RefreshToken == "" ||
-			validateReconnectTarget(reconnect, userID, orgID, *sess.ReconnectAccountID, owner.Email) != nil {
+			validateReconnectTarget(reconnect, userID, orgID, *sess.ReconnectAccountID, "") != nil {
 			return nil, errx.ErrEmailOnboardState
 		}
-		if xerr := s.emailRepository.ReconnectOutlookToken(ctx, userID, *orgID, reconnect.ID, owner.Email, sess.ReconnectCredentialVersion, tok.AccessToken, tok.RefreshToken, tok.Expiry); xerr != nil {
+		if !strings.EqualFold(strings.TrimSpace(reconnect.Email), strings.TrimSpace(owner.Email)) {
+			// A shared mailbox's /me is its delegate, not the mailbox. Require
+			// read access to the exact state-bound mailbox before replacing tokens.
+			if xerr := validateOutlookSharedMailboxAccess(ctx, tok.AccessToken, reconnect.Email); xerr != nil {
+				return nil, xerr
+			}
+		}
+		if xerr := s.emailRepository.ReconnectOutlookToken(ctx, userID, *orgID, reconnect.ID, reconnect.Email, sess.ReconnectCredentialVersion, tok.AccessToken, tok.RefreshToken, tok.Expiry); xerr != nil {
 			return nil, xerr
 		}
 		return reconnect, nil // Intentionally no activation, worker load, or send event.
