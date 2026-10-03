@@ -70,6 +70,34 @@ func TestArgumentsNeverTouchEnvironmentBeforeExecute(t *testing.T) {
 	}
 }
 
+func TestWriteWindowRecheckedAfterGraph(t *testing.T) {
+	p := validPermit()
+	now := time.Now().UTC()
+	g := grantEvidence{TargetID: p.TargetID, TenantID: p.TenantID, AppID: p.AppID, Email: p.Email, MailReadWrite: true, MailSend: true, RestrictionEffective: true, ObservedAt: now}
+	f := fenceEvidence{TargetID: p.TargetID, DispatchFenced: true, ObservedAt: now, FenceUntil: p.ExpiresAt.Add(time.Minute)}
+	if !writeWindowOpen(p, g, f, now) {
+		t.Fatal("valid write window rejected")
+	}
+	for _, tc := range []struct {
+		name string
+		at   time.Time
+	}{
+		{"permit expired", p.ExpiresAt},
+		{"grant stale after Graph", now.Add(5 * time.Minute)},
+		{"fence expired", f.FenceUntil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if writeWindowOpen(p, g, f, tc.at) {
+				t.Fatal("expired write window accepted")
+			}
+		})
+	}
+	f.FenceUntil = now.Add(-time.Second)
+	if writeWindowOpen(p, g, f, now) {
+		t.Fatal("elapsed fence accepted")
+	}
+}
+
 func TestEscrowPreimageExactEquality(t *testing.T) {
 	acc := json.RawMessage(`{"id":"one","status":"inactive"}`)
 	oauth := json.RawMessage(`{"email_account_id":"one","access_token":"sealed","refresh_token":"sealed2"}`)
@@ -147,17 +175,25 @@ func TestReviewerSignaturePinnedToExactPermit(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("sign test permit: %v: %s", err, out)
 	}
-	if err := gpgVerify(context.Background(), filepath.Join(home, "pubring.kbx"), sig, permitFile, fingerprint); err != nil {
+	signedBytes, err := os.ReadFile(permitFile)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if gpgVerify(context.Background(), filepath.Join(home, "pubring.kbx"), sig, permitFile, strings.Repeat("A", 40)) == nil {
+	if err := gpgVerify(context.Background(), filepath.Join(home, "pubring.kbx"), sig, signedBytes, fingerprint); err != nil {
+		t.Fatal(err)
+	}
+	if gpgVerify(context.Background(), filepath.Join(home, "pubring.kbx"), sig, signedBytes, strings.Repeat("A", 40)) == nil {
 		t.Fatal("accepted wrong reviewer")
 	}
 	if err := os.WriteFile(permitFile, []byte(`{"target_id":"modified"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if gpgVerify(context.Background(), filepath.Join(home, "pubring.kbx"), sig, permitFile, fingerprint) == nil {
-		t.Fatal("accepted modified permit")
+	// An atomic path swap cannot turn a signature on B into approval of parsed A.
+	if gpgVerify(context.Background(), filepath.Join(home, "pubring.kbx"), sig, []byte(`{"target_id":"modified"}`), fingerprint) == nil {
+		t.Fatal("accepted unsigned parsed bytes")
+	}
+	if err := gpgVerify(context.Background(), filepath.Join(home, "pubring.kbx"), sig, signedBytes, fingerprint); err != nil {
+		t.Fatalf("path replacement changed verification of captured bytes: %v", err)
 	}
 }
 
@@ -184,5 +220,37 @@ func TestDryRunLocalAndExecuteClosedWithoutReviewedBuild(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(filepath.Dir(path), "receipt.json")); !os.IsNotExist(err) {
 		t.Fatal("side effect on invalid args")
+	}
+}
+
+func TestEscrowDecryptsOnlyCapturedCiphertext(t *testing.T) {
+	if _, err := exec.LookPath("gpg"); err != nil {
+		t.Skip("gpg unavailable")
+	}
+	home := t.TempDir()
+	t.Setenv("GNUPGHOME", home)
+	path := filepath.Join(home, "escrow.gpg")
+	key := exec.Command("gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", "Escrow Test <escrow@example.test>", "default", "default", "never")
+	if out, err := key.CombinedOutput(); err != nil {
+		t.Fatalf("generate test key: %v: %s", err, out)
+	}
+	encrypt := func(text string) []byte {
+		t.Helper()
+		cmd := exec.Command("gpg", "--batch", "--yes", "--trust-model", "always", "--recipient", "escrow@example.test", "--encrypt", "--output", path)
+		cmd.Stdin = strings.NewReader(text)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("encrypt: %v: %s", err, out)
+		}
+		ciphertext, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ciphertext
+	}
+	approved := encrypt("approved-preimage")
+	_ = encrypt("swapped-preimage")
+	got, err := decryptEscrow(context.Background(), approved)
+	if err != nil || string(got) != "approved-preimage" {
+		t.Fatalf("escrow path swap affected captured bytes: %v %q", err, got)
 	}
 }

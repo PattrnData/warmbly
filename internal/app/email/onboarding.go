@@ -400,6 +400,12 @@ func (s *emailService) OnboardOutlookAppOnly(ctx context.Context, userID string,
 // inactive shared sender. It never creates/activates a mailbox, loads a worker,
 // or emits a connected event; those steps require a separate production gate.
 func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string, orgID *uuid.UUID, id, workerID uuid.UUID, email string, tenantID uuid.UUID, expectedVersion string) (*models.Email, *errx.Error) {
+	return s.ConvertOutlookAppOnlyWithWriteGuard(ctx, userID, orgID, id, workerID, email, tenantID, expectedVersion, nil)
+}
+
+// ConvertOutlookAppOnlyWithWriteGuard rechecks external authorization after the
+// Graph read but before committing the guarded credential update.
+func (s *emailService) ConvertOutlookAppOnlyWithWriteGuard(ctx context.Context, userID string, orgID *uuid.UUID, id, workerID uuid.UUID, email string, tenantID uuid.UUID, expectedVersion string, writeGuard func() bool) (*models.Email, *errx.Error) {
 	email = strings.TrimSpace(email)
 	if orgID == nil || !approvedSharedSenderConversionTarget(id) || workerID == uuid.Nil || tenantID == uuid.Nil || email == "" || expectedVersion == "" {
 		return nil, errx.ErrEmailOnboardState
@@ -436,6 +442,9 @@ func (s *emailService) ConvertOutlookAppOnly(ctx context.Context, userID string,
 	}
 	if xerr := validateOutlookSharedMailboxAccess(ctx, tok.AccessToken, acc.Email); xerr != nil {
 		return nil, xerr
+	}
+	if ctx.Err() != nil || (writeGuard != nil && !writeGuard()) {
+		return nil, errx.ErrEmailOnboardState
 	}
 	if xerr := s.emailRepository.ConvertOutlookAppOnly(ctx, userID, *orgID, id, workerID, email, expectedVersion); xerr != nil {
 		return nil, xerr

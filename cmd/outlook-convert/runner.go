@@ -129,6 +129,13 @@ func validatePermit(p permit, now time.Time) error {
 	}
 	return nil
 }
+
+// The signed authorization and two bound evidence windows must still be valid
+// at the moment the credential CAS begins, not merely before the Graph read.
+func writeWindowOpen(p permit, grant grantEvidence, fence fenceEvidence, now time.Time) bool {
+	return validatePermit(p, now) == nil && verifyEvidence(p, grant, fence, now) == nil && now.Before(fence.FenceUntil)
+}
+
 func decodeStrict(data []byte, v any) error {
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.DisallowUnknownFields()
@@ -162,11 +169,12 @@ func samePreimage(e preimage, account, oauth json.RawMessage) error {
 }
 
 // gpgVerify only accepts a cryptographically valid signature from the pinned reviewer.
-func gpgVerify(ctx context.Context, keyring, signature, document, fingerprint string) error {
+func gpgVerify(ctx context.Context, keyring, signature string, document []byte, fingerprint string) error {
 	if fingerprint == "" || keyring == "" {
 		return errors.New("reviewer key not pinned")
 	}
-	cmd := exec.CommandContext(ctx, "gpg", "--batch", "--no-tty", "--no-default-keyring", "--keyring", keyring, "--status-fd", "1", "--verify", signature, document)
+	cmd := exec.CommandContext(ctx, "gpg", "--batch", "--no-tty", "--no-default-keyring", "--keyring", keyring, "--status-fd", "1", "--verify", signature, "-")
+	cmd.Stdin = bytes.NewReader(document)
 	cmd.Stderr = io.Discard
 	output, err := cmd.Output()
 	if err != nil {
@@ -180,8 +188,9 @@ func gpgVerify(ctx context.Context, keyring, signature, document, fingerprint st
 	}
 	return errors.New("reviewer signature does not match pinned fingerprint")
 }
-func decryptEscrow(ctx context.Context, path string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "gpg", "--batch", "--no-tty", "--decrypt", path)
+func decryptEscrow(ctx context.Context, ciphertext []byte) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "gpg", "--batch", "--no-tty", "--decrypt", "-")
+	cmd.Stdin = bytes.NewReader(ciphertext)
 	cmd.Stderr = io.Discard
 	data, err := cmd.Output()
 	if err != nil {
@@ -359,7 +368,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	if err := gpgVerify(ctx, keyring, signature, permitPath, trustedReviewerFingerprint); err != nil {
+	if err := gpgVerify(ctx, keyring, signature, data, trustedReviewerFingerprint); err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
@@ -378,7 +387,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "escrow digest mismatch")
 		return 1
 	}
-	raw, err := decryptEscrow(ctx, escrow)
+	raw, err := decryptEscrow(ctx, encrypted)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -424,23 +433,32 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "preflight rejected:", err)
 		return 1
 	}
-	if err := validatePermit(p, time.Now().UTC()); err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
-	}
-	if err := verifyEvidence(p, grant, fence, time.Now().UTC()); err != nil {
-		fmt.Fprintln(stderr, err)
+	if !writeWindowOpen(p, grant, fence, time.Now().UTC()) {
+		fmt.Fprintln(stderr, "authorization or fence expired before Graph")
 		return 1
 	}
 	repo := repository.NewEmailRepostory(d, nil)
 	oauth := config.Oauth2Inbox{OutlookAppOnly: config.OutlookAppOnlyInbox()}
 	service := email.NewServiceWithWorker(repo, nil, nil, nil, nil, nil, &oauth, nil)
-	if _, xerr := service.ConvertOutlookAppOnly(ctx, p.OwnerID.String(), &p.OrgID, p.TargetID, p.WorkerID, p.Email, p.TenantID, p.CredentialVersion); xerr != nil {
-		fmt.Fprintln(stderr, "conversion rejected")
+	deadline := p.ExpiresAt
+	if p.NoSendUntil.Before(deadline) {
+		deadline = p.NoSendUntil
+	}
+	if fence.FenceUntil.Before(deadline) {
+		deadline = fence.FenceUntil
+	}
+	writeCtx, stopWrite := context.WithDeadline(ctx, deadline)
+	defer stopWrite()
+	if _, xerr := service.ConvertOutlookAppOnlyWithWriteGuard(writeCtx, p.OwnerID.String(), &p.OrgID, p.TargetID, p.WorkerID, p.Email, p.TenantID, p.CredentialVersion, func() bool {
+		return writeWindowOpen(p, grant, fence, time.Now().UTC())
+	}); xerr != nil {
+		fmt.Fprintln(stderr, "conversion rejected; if CAS began, manually reconcile before retry")
 		return 1
 	}
-	// A failed readback is a serious partial outcome: do not repeat the CAS.
-	readbackErr := reconcile(ctx, d, p, pre, fifth)
+	// Readback must run even when the write context expires after a successful CAS.
+	readCtx, stopRead := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer stopRead()
+	readbackErr := reconcile(readCtx, d, p, pre, fifth)
 	result := map[string]any{"target_id": p.TargetID, "permit_sha256": permitHash, "binary_sha256": binHash, "escrow_sha256": p.EscrowSHA256, "credential_version": p.CredentialVersion, "at": time.Now().UTC(), "reconciled": readbackErr == nil, "status": "inactive expected; no activation or sends"}
 	receiptData, _ := json.MarshalIndent(result, "", "  ")
 	if _, err := f.Write(append(receiptData, '\n')); err != nil {

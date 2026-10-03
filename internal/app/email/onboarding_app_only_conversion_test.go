@@ -126,6 +126,9 @@ func TestConvertOutlookAppOnlyExactInactiveSharedSender(t *testing.T) {
 	if _, xerr := svc.ConvertOutlookAppOnly(context.Background(), "owner", &org, targetID, workerID, target.Email, uuid.New(), "fixture-version"); xerr == nil || repo.conversions != 0 {
 		t.Fatal("wrong tenant accepted")
 	}
+	if _, xerr := svc.ConvertOutlookAppOnlyWithWriteGuard(context.Background(), "owner", &org, targetID, workerID, target.Email, tenantID, "fixture-version", func() bool { return false }); xerr == nil || repo.conversions != 0 {
+		t.Fatal("expired authorization reached credential write")
+	}
 	acc, xerr := svc.ConvertOutlookAppOnly(context.Background(), "owner", &org, targetID, workerID, target.Email, tenantID, "fixture-version")
 	if xerr != nil || acc != target || acc.Status != "inactive" || repo.conversions != 1 {
 		t.Fatalf("conversion failed or activated sender: %v %+v", xerr, acc)
