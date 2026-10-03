@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/config"
@@ -80,8 +81,12 @@ func TestConvertOutlookAppOnlyExactInactiveSharedSender(t *testing.T) {
 	defer func() { httpClient = oldClient }()
 	graphStatus := http.StatusOK
 	graphReads := 0
+	graphDelay := time.Duration(0)
 	httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		graphReads++
+		// Simulate a Graph response that arrives after the write deadline,
+		// even when its transport ignores context cancellation.
+		time.Sleep(graphDelay)
 		if r.Method != http.MethodGet || !strings.Contains(r.URL.String(), "/users/shared@example.test/mailFolders/inbox") {
 			t.Errorf("unexpected Graph target: %s", r.URL)
 		}
@@ -129,6 +134,13 @@ func TestConvertOutlookAppOnlyExactInactiveSharedSender(t *testing.T) {
 	if _, xerr := svc.ConvertOutlookAppOnlyWithWriteGuard(context.Background(), "owner", &org, targetID, workerID, target.Email, tenantID, "fixture-version", func() bool { return false }); xerr == nil || repo.conversions != 0 {
 		t.Fatal("expired authorization reached credential write")
 	}
+	graphDelay = 25 * time.Millisecond
+	expiredCtx, stop := context.WithTimeout(context.Background(), 5*time.Millisecond)
+	defer stop()
+	if _, xerr := svc.ConvertOutlookAppOnlyWithWriteGuard(expiredCtx, "owner", &org, targetID, workerID, target.Email, tenantID, "fixture-version", func() bool { return true }); xerr == nil || repo.conversions != 0 {
+		t.Fatal("Graph response after authorization deadline reached CAS")
+	}
+	graphDelay = 0
 	acc, xerr := svc.ConvertOutlookAppOnly(context.Background(), "owner", &org, targetID, workerID, target.Email, tenantID, "fixture-version")
 	if xerr != nil || acc != target || acc.Status != "inactive" || repo.conversions != 1 {
 		t.Fatalf("conversion failed or activated sender: %v %+v", xerr, acc)
