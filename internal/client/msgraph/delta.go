@@ -2,6 +2,7 @@ package msgraph
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 )
 
@@ -74,7 +75,7 @@ func (c *Client) syncFolder(ctx context.Context, folder string) error {
 			}
 			return nil
 		default:
-			return nil
+			return fmt.Errorf("graph delta response for %s has no cursor", folder)
 		}
 	}
 }

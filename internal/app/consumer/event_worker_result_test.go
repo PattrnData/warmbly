@@ -95,9 +95,42 @@ func TestEmailSentResultResolvesRetryMailboxErrors(t *testing.T) {
 	}
 }
 
+func TestMailboxProviderSyncResolvesMailboxRetryWarnings(t *testing.T) {
+	accountID := uuid.New()
+	errors := &fakeEmailAccountErrorRepo{}
+	svc := &JobsService{EmailAccountErrorRepository: errors}
+	svc.InitEvents()
+
+	if err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeMailboxProviderSync,
+		Body: map[string]any{"email_id": accountID.String()},
+	}); err != nil {
+		t.Fatalf("HandleEvent provider sync: %v", err)
+	}
+	if errors.connectionID != accountID || errors.method != "" {
+		t.Fatalf("resolved connection warning for %s; generic method %q; want %s and no generic resolution", errors.connectionID, errors.method, accountID)
+	}
+}
+
+func TestMailboxProviderSyncRejectsMissingMailbox(t *testing.T) {
+	errors := &fakeEmailAccountErrorRepo{}
+	svc := &JobsService{EmailAccountErrorRepository: errors}
+	svc.InitEvents()
+	if err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeMailboxProviderSync,
+		Body: map[string]any{"email_id": uuid.Nil.String()},
+	}); err == nil {
+		t.Fatal("missing mailbox accepted")
+	}
+	if errors.method != "" || errors.connectionID != uuid.Nil {
+		t.Fatalf("resolved warning without mailbox: %q %s", errors.method, errors.connectionID)
+	}
+}
+
 type fakeEmailAccountErrorRepo struct {
-	accountID uuid.UUID
-	method    string
+	accountID    uuid.UUID
+	connectionID uuid.UUID
+	method       string
 }
 
 func (f *fakeEmailAccountErrorRepo) Create(context.Context, *repository.CreateEmailAccountError) (*repository.EmailAccountError, *errx.Error) {
@@ -115,6 +148,10 @@ func (f *fakeEmailAccountErrorRepo) Resolve(context.Context, uuid.UUID, string) 
 func (f *fakeEmailAccountErrorRepo) ResolveByMethod(_ context.Context, accountID uuid.UUID, method string) *errx.Error {
 	f.accountID = accountID
 	f.method = method
+	return nil
+}
+func (f *fakeEmailAccountErrorRepo) ResolveConnectionWarnings(_ context.Context, accountID uuid.UUID) *errx.Error {
+	f.connectionID = accountID
 	return nil
 }
 func (f *fakeEmailAccountErrorRepo) ResolveAllForAccount(context.Context, uuid.UUID, string) *errx.Error {

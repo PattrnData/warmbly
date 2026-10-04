@@ -50,6 +50,7 @@ type EmailAccountErrorRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]EmailAccountError, *errx.Error)
 	Resolve(ctx context.Context, errorID uuid.UUID, resolvedBy string) *errx.Error
 	ResolveByMethod(ctx context.Context, accountID uuid.UUID, method string) *errx.Error
+	ResolveConnectionWarnings(ctx context.Context, accountID uuid.UUID) *errx.Error
 	ResolveAllForAccount(ctx context.Context, accountID uuid.UUID, resolvedBy string) *errx.Error
 }
 
@@ -210,13 +211,14 @@ func (r *emailAccountErrorRepository) Resolve(ctx context.Context, errorID uuid.
 	return nil
 }
 
-// ResolveByMethod resolves all errors for an account that have the specified resolve method
+// ResolveByMethod resolves warnings for an account that have the specified resolve method.
 func (r *emailAccountErrorRepository) ResolveByMethod(ctx context.Context, accountID uuid.UUID, method string) *errx.Error {
 	query := `
 		UPDATE email_account_errors
 		SET resolved_at = NOW(), resolved_by = $1
 		WHERE email_account_id = $2
 		  AND resolve_method = $3
+		  AND severity = 'WARNING'
 		  AND resolved_at IS NULL
 	`
 
@@ -227,6 +229,25 @@ func (r *emailAccountErrorRepository) ResolveByMethod(ctx context.Context, accou
 		return errx.InternalError()
 	}
 
+	return nil
+}
+
+// ResolveConnectionWarnings clears only transient connection warnings proven by
+// a subsequent complete mailbox sync; sync does not prove sending is healthy.
+func (r *emailAccountErrorRepository) ResolveConnectionWarnings(ctx context.Context, accountID uuid.UUID) *errx.Error {
+	query := `
+		UPDATE email_account_errors
+		SET resolved_at = NOW(), resolved_by = 'system:RETRY'
+		WHERE email_account_id = $1
+		  AND error_code = 'SERVER_UNREACHABLE'
+		  AND severity = 'WARNING'
+		  AND resolve_method = 'RETRY'
+		  AND resolved_at IS NULL
+	`
+	if _, err := r.DB.Exec(ctx, query, accountID); err != nil {
+		db.CaptureError(err, query, []any{accountID}, "exec")
+		return errx.InternalError()
+	}
 	return nil
 }
 

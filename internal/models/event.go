@@ -27,9 +27,10 @@ const (
 	JobEventTypeMailboxUpdate JobEventType = "UPDATE_MAILBOX"
 	JobEventTypeMailboxDelete JobEventType = "DELETE_MAILBOX"
 
-	JobEventTypeTokenUpdate      JobEventType = "TOKEN_UPDATE"
-	JobEventTypeHistoryIDUpdate  JobEventType = "HISTORY_ID_UPDATE"
-	JobEventTypeGraphDeltaUpdate JobEventType = "GRAPH_DELTA_UPDATE"
+	JobEventTypeTokenUpdate         JobEventType = "TOKEN_UPDATE"
+	JobEventTypeHistoryIDUpdate     JobEventType = "HISTORY_ID_UPDATE"
+	JobEventTypeGraphDeltaUpdate    JobEventType = "GRAPH_DELTA_UPDATE"
+	JobEventTypeMailboxProviderSync JobEventType = "MAILBOX_PROVIDER_SYNC"
 
 	// Task result events from worker
 	JobEventTypeEmailSent   JobEventType = "EMAIL_SENT"

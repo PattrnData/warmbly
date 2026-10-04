@@ -12,3 +12,8 @@ type JobEventGraphDeltaUpdate struct {
 	Folder    string    `json:"folder"`
 	DeltaLink string    `json:"delta_link"`
 }
+
+// JobEventMailboxProviderSync identifies a mailbox whose provider sync completed.
+type JobEventMailboxProviderSync struct {
+	EmailID uuid.UUID `json:"email_id"`
+}

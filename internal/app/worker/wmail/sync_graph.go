@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/warmbly/warmbly/internal/errx"
+	"github.com/warmbly/warmbly/internal/models"
 )
 
 // SyncGraph walks the Microsoft Graph delta stream for the mailbox. It is the
@@ -17,6 +18,10 @@ func (w *WMail) SyncGraph(ctx context.Context) *errx.MailError {
 		if errors.As(err, &mailErr) {
 			return mailErr
 		}
+		w.CaptureError(err)
+		return nil
+	}
+	if err := w.onEvent(models.JobEventTypeMailboxProviderSync, &models.JobEventMailboxProviderSync{EmailID: w.ID}); err != nil {
 		w.CaptureError(err)
 	}
 	return nil
