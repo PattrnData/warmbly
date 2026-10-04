@@ -290,8 +290,21 @@ func reconcile(ctx context.Context, d *db.DB, p permit, e preimage, fifthBefore 
 		RefreshToken   string    `json:"refresh_token"`
 		ExpiresAt      time.Time `json:"expires_at"`
 	}
-	if json.Unmarshal(s.OAuth, &o) != nil || o.EmailAccountID != p.TargetID || o.AccessToken != "" || o.RefreshToken != models.GraphAppOnlyRefreshToken {
+	if json.Unmarshal(s.OAuth, &o) != nil || o.EmailAccountID != p.TargetID || o.AccessToken != "" || o.RefreshToken != models.GraphAppOnlyRefreshToken || o.ExpiresAt.IsZero() || o.ExpiresAt.After(time.Now().UTC()) {
 		return errors.New("post-write OAuth mismatch")
+	}
+	var before, after map[string]json.RawMessage
+	if json.Unmarshal(e.OAuth, &before) != nil || json.Unmarshal(s.OAuth, &after) != nil {
+		return errors.New("post-write OAuth unreadable")
+	}
+	for _, key := range []string{"access_token", "refresh_token", "expires_at"} {
+		delete(before, key)
+		delete(after, key)
+	}
+	beforeBytes, _ := json.Marshal(before)
+	afterBytes, _ := json.Marshal(after)
+	if !bytes.Equal(beforeBytes, afterBytes) {
+		return errors.New("post-write OAuth metadata drift")
 	}
 	fifth, err := readFifth(ctx, tx)
 	if err != nil || fifth != fifthBefore {
