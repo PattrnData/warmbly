@@ -98,6 +98,20 @@ func TestWriteWindowRecheckedAfterGraph(t *testing.T) {
 	}
 }
 
+func TestWriteDeadlineIncludesObservationFreshness(t *testing.T) {
+	p := validPermit()
+	now := time.Now().UTC()
+	g := grantEvidence{ObservedAt: now.Add(-4*time.Minute - 58*time.Second)}
+	f := fenceEvidence{ObservedAt: now.Add(-4*time.Minute - 59*time.Second), FenceUntil: p.ExpiresAt.Add(time.Minute)}
+	if got, want := writeDeadline(p, g, f), f.ObservedAt.Add(5*time.Minute); !got.Equal(want) {
+		t.Fatalf("deadline %s; want earliest observation expiry %s", got, want)
+	}
+	f.ObservedAt = now
+	if got, want := writeDeadline(p, g, f), g.ObservedAt.Add(5*time.Minute); !got.Equal(want) {
+		t.Fatalf("deadline %s; want grant expiry %s", got, want)
+	}
+}
+
 func TestEscrowPreimageExactEquality(t *testing.T) {
 	acc := json.RawMessage(`{"id":"one","status":"inactive"}`)
 	oauth := json.RawMessage(`{"email_account_id":"one","access_token":"sealed","refresh_token":"sealed2"}`)

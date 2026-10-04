@@ -136,6 +136,17 @@ func writeWindowOpen(p permit, grant grantEvidence, fence fenceEvidence, now tim
 	return validatePermit(p, now) == nil && verifyEvidence(p, grant, fence, now) == nil && now.Before(fence.FenceUntil)
 }
 
+// PostgreSQL row-lock waits must not outlive the evidence checked before CAS.
+func writeDeadline(p permit, grant grantEvidence, fence fenceEvidence) time.Time {
+	deadline := p.ExpiresAt
+	for _, end := range []time.Time{p.NoSendUntil, fence.FenceUntil, grant.ObservedAt.Add(5 * time.Minute), fence.ObservedAt.Add(5 * time.Minute)} {
+		if end.Before(deadline) {
+			deadline = end
+		}
+	}
+	return deadline
+}
+
 func decodeStrict(data []byte, v any) error {
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.DisallowUnknownFields()
@@ -453,14 +464,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	repo := repository.NewEmailRepostory(d, nil)
 	oauth := config.Oauth2Inbox{OutlookAppOnly: config.OutlookAppOnlyInbox()}
 	service := email.NewServiceWithWorker(repo, nil, nil, nil, nil, nil, &oauth, nil)
-	deadline := p.ExpiresAt
-	if p.NoSendUntil.Before(deadline) {
-		deadline = p.NoSendUntil
-	}
-	if fence.FenceUntil.Before(deadline) {
-		deadline = fence.FenceUntil
-	}
-	writeCtx, stopWrite := context.WithDeadline(ctx, deadline)
+	writeCtx, stopWrite := context.WithDeadline(ctx, writeDeadline(p, grant, fence))
 	defer stopWrite()
 	if _, xerr := service.ConvertOutlookAppOnlyWithWriteGuard(writeCtx, p.OwnerID.String(), &p.OrgID, p.TargetID, p.WorkerID, p.Email, p.TenantID, p.CredentialVersion, func() bool {
 		return writeWindowOpen(p, grant, fence, time.Now().UTC())
