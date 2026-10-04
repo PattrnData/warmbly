@@ -49,6 +49,7 @@ func (s *JobsService) HandleEmailAuthError(ctx context.Context, event models.Ema
 			UserMessage:    ptrString(event.UserMessage),
 			ActionRequired: ptrString(event.ActionRequired),
 			TaskID:         taskID,
+			OccurredAt:     event.OccurredAt,
 		}
 
 		if _, xerr := s.EmailAccountErrorRepository.Create(ctx, errorRecord); xerr != nil {
@@ -121,6 +122,7 @@ func (s *JobsService) HandleEmailDisabled(ctx context.Context, event models.Emai
 			UserMessage:    ptrString(event.UserMessage),
 			ActionRequired: ptrString(event.ActionRequired),
 			TaskID:         taskID,
+			OccurredAt:     event.OccurredAt,
 		}
 
 		if _, xerr := s.EmailAccountErrorRepository.Create(ctx, errorRecord); xerr != nil {
@@ -193,6 +195,7 @@ func (s *JobsService) HandleEmailRateLimited(ctx context.Context, event models.E
 			UserMessage:    ptrString(event.UserMessage),
 			ActionRequired: ptrString(event.ActionRequired),
 			TaskID:         taskID,
+			OccurredAt:     event.OccurredAt,
 		}
 
 		if _, xerr := s.EmailAccountErrorRepository.Create(ctx, errorRecord); xerr != nil {
@@ -272,6 +275,7 @@ func (s *JobsService) HandleEmailServerError(ctx context.Context, event models.E
 			UserMessage:    ptrString(event.UserMessage),
 			ActionRequired: ptrString(event.ActionRequired),
 			TaskID:         taskID,
+			OccurredAt:     event.OccurredAt,
 		}
 
 		if _, xerr := s.EmailAccountErrorRepository.Create(ctx, errorRecord); xerr != nil {

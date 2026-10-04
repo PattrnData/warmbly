@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/errx"
@@ -103,12 +104,27 @@ func TestMailboxProviderSyncResolvesMailboxRetryWarnings(t *testing.T) {
 
 	if err := svc.HandleEvent(context.Background(), &models.JobEvent{
 		Type: models.JobEventTypeMailboxProviderSync,
-		Body: map[string]any{"email_id": accountID.String()},
+		Body: map[string]any{"email_id": accountID.String(), "started_at": time.Now().UTC().Format(time.RFC3339Nano)},
 	}); err != nil {
 		t.Fatalf("HandleEvent provider sync: %v", err)
 	}
 	if errors.connectionID != accountID || errors.method != "" {
 		t.Fatalf("resolved connection warning for %s; generic method %q; want %s and no generic resolution", errors.connectionID, errors.method, accountID)
+	}
+}
+
+func TestMailboxProviderSyncRejectsUnboundedSuccess(t *testing.T) {
+	errors := &fakeEmailAccountErrorRepo{}
+	svc := &JobsService{EmailAccountErrorRepository: errors}
+	svc.InitEvents()
+	if err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeMailboxProviderSync,
+		Body: map[string]any{"email_id": uuid.New().String()},
+	}); err == nil {
+		t.Fatal("success without pass start could erase a newer warning")
+	}
+	if errors.connectionID != uuid.Nil {
+		t.Fatal("unbounded success reached repository")
 	}
 }
 
@@ -150,7 +166,7 @@ func (f *fakeEmailAccountErrorRepo) ResolveByMethod(_ context.Context, accountID
 	f.method = method
 	return nil
 }
-func (f *fakeEmailAccountErrorRepo) ResolveConnectionWarnings(_ context.Context, accountID uuid.UUID) *errx.Error {
+func (f *fakeEmailAccountErrorRepo) ResolveConnectionWarnings(_ context.Context, accountID uuid.UUID, _ time.Time) *errx.Error {
 	f.connectionID = accountID
 	return nil
 }

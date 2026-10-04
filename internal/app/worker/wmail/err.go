@@ -41,6 +41,7 @@ func (w *WMail) CaptureError(err error) {
 		UserMessage:    userInfo.Message,
 		ActionRequired: userInfo.ActionRequired,
 		Timestamp:      time.Now().Unix(),
+		OccurredAt:     time.Now().UTC(),
 	}
 
 	_ = w.onEvent(eventType, errorEvent)

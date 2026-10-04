@@ -55,6 +55,9 @@ func TestGraphSyncEmitsMailboxSuccessOnlyAfterBothFolders(t *testing.T) {
 				if body.(*models.JobEventMailboxProviderSync).EmailID != accountID {
 					t.Fatal("success for wrong mailbox")
 				}
+				if body.(*models.JobEventMailboxProviderSync).StartedAt.IsZero() {
+					t.Fatal("success must carry the start of the completed sync pass")
+				}
 				events++
 				return nil
 			}}
