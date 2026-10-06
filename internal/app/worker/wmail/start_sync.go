@@ -21,18 +21,46 @@ func (w *WMail) StartSyncWorker(ctx context.Context) {
 		interval = 1 * time.Minute
 	}
 
-	// Run an initial sync immediately so the inbox is fresh on startup.
-	w.syncOnce(ctx)
+	w.runSyncLoop(ctx, interval)
+}
 
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+// syncRetryInterval doubles failed Outlook poll intervals, capped per mailbox.
+func syncRetryInterval(base time.Duration, failures int) time.Duration {
+	delay := base
+	for i := 0; i < failures; i++ {
+		if delay >= 15*time.Minute/2 {
+			return 15 * time.Minute
+		}
+		delay *= 2
+	}
+	return delay
+}
 
+func (w *WMail) runSyncLoop(ctx context.Context, interval time.Duration) {
+	failures := 0
 	for {
+		if ctx.Err() != nil {
+			return
+		}
+		if w.syncOnce(ctx) {
+			failures = 0
+		} else if w.EmailType == models.InboxProviderOutlook {
+			failures++
+		}
+		// A canceled auth mailbox must not begin another sync pass.
+		if ctx.Err() != nil {
+			return
+		}
+		delay := interval
+		if w.EmailType == models.InboxProviderOutlook {
+			delay = syncRetryInterval(interval, failures)
+		}
+		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return
-		case <-ticker.C:
-			w.syncOnce(ctx)
+		case <-timer.C:
 		}
 	}
 }
@@ -40,16 +68,32 @@ func (w *WMail) StartSyncWorker(ctx context.Context) {
 // syncOnce runs one sync pass, containing panics: the worker is multi-tenant,
 // so one mailbox's bad server response must not take down every other
 // account's sync and send loops.
-func (w *WMail) syncOnce(ctx context.Context) {
+func (w *WMail) syncOnce(ctx context.Context) (success bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := fmt.Errorf("mail sync panic: %v", r)
-			w.CaptureError(err)
+			_ = w.CaptureError(err)
 			log.Error().Err(err).Str("email_id", w.ID.String()).Msg("mail sync panicked")
+			success = false
 		}
 	}()
-	if err := w.SyncMail(ctx); err != nil {
-		w.CaptureError(err)
-		log.Warn().Err(err).Str("email_id", w.ID.String()).Msg("mail sync error")
+	if w.pendingSyncAlert != nil {
+		if err := w.CaptureError(w.pendingSyncAlert); err != nil {
+			log.Warn().Err(err).Str("email_id", w.ID.String()).Msg("mail alert publish retry failed")
+			return false
+		}
+		w.pendingSyncAlert = nil
+		if ctx.Err() != nil {
+			return false
+		}
 	}
+	if err := w.SyncMail(ctx); err != nil {
+		if publishErr := w.CaptureError(err); publishErr != nil {
+			w.pendingSyncAlert = err
+			log.Warn().Err(publishErr).Str("email_id", w.ID.String()).Msg("mail alert publish failed")
+		}
+		log.Warn().Err(err).Str("email_id", w.ID.String()).Msg("mail sync error")
+		return false
+	}
+	return true
 }

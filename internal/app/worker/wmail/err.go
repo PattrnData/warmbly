@@ -9,7 +9,7 @@ import (
 	"github.com/warmbly/warmbly/internal/models"
 )
 
-func (w *WMail) CaptureError(err error) {
+func (w *WMail) CaptureError(err error) error {
 	sentry.WithScope(func(scope *sentry.Scope) {
 		scope.SetTag("user_id", w.UserID.String())
 		scope.SetTag("email_id", w.ID.String())
@@ -20,12 +20,12 @@ func (w *WMail) CaptureError(err error) {
 	// an event so the consumer can mark the account inactive and stop syncing.
 	var mailErr *errx.MailError
 	if !errors.As(err, &mailErr) {
-		return
+		return nil
 	}
 
 	eventType := mailErrorToJobEventType(mailErr)
 	if eventType == "" {
-		return
+		return nil
 	}
 
 	userInfo := mailErr.GetUserErrorInfo()
@@ -44,7 +44,9 @@ func (w *WMail) CaptureError(err error) {
 		OccurredAt:     time.Now().UTC(),
 	}
 
-	_ = w.onEvent(eventType, errorEvent)
+	if err := w.onEvent(eventType, errorEvent); err != nil {
+		return err
+	}
 
 	// Critical errors should stop the sync loop and remove the account from the
 	// worker's local state until the user re-authenticates.
@@ -57,6 +59,7 @@ func (w *WMail) CaptureError(err error) {
 			w.TerminateFunc()
 		}
 	}
+	return nil
 }
 
 // mailErrorToJobEventType maps a mail error code to the matching job event type

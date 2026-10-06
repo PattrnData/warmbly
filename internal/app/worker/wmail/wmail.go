@@ -70,7 +70,8 @@ type WMail struct {
 	Cancel        context.CancelFunc
 	TerminateFunc func()
 
-	onEvent func(jobType models.JobEventType, body any) error
+	onEvent          func(jobType models.JobEventType, body any) error
+	pendingSyncAlert error // retry a failed warning publish before any success receipt
 }
 
 func NewWMail(
