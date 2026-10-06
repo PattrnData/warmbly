@@ -147,10 +147,11 @@ type fakeEmailAccountErrorRepo struct {
 	accountID    uuid.UUID
 	connectionID uuid.UUID
 	method       string
+	createErr    *errx.Error
 }
 
 func (f *fakeEmailAccountErrorRepo) Create(context.Context, *repository.CreateEmailAccountError) (*repository.EmailAccountError, *errx.Error) {
-	return nil, nil
+	return nil, f.createErr
 }
 func (f *fakeEmailAccountErrorRepo) GetByAccountID(context.Context, uuid.UUID, bool) ([]repository.EmailAccountError, *errx.Error) {
 	return nil, nil
@@ -220,6 +221,24 @@ func TestEmailServerErrorAccountEventStillUsesAccountHandler(t *testing.T) {
 	}
 	if repo.failureTaskID != uuid.Nil {
 		t.Fatalf("account-shaped error event recorded task failure for %s", repo.failureTaskID)
+	}
+}
+
+func TestEmailServerErrorPersistenceFailureDoesNotAcknowledge(t *testing.T) {
+	repo := &fakeEmailAccountErrorRepo{createErr: errx.InternalError()}
+	svc := &JobsService{EmailAccountErrorRepository: repo}
+	svc.InitEvents()
+	err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeEmailServerError,
+		Body: map[string]any{
+			"email_account_id": uuid.New().String(),
+			"user_id":          uuid.New().String(),
+			"error_code":       "SERVER_UNREACHABLE",
+			"resolve_method":   "RETRY",
+		},
+	})
+	if err == nil {
+		t.Fatal("warning persistence failed, but event handler acknowledged it")
 	}
 }
 

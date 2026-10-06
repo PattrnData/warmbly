@@ -22,11 +22,16 @@ func TestGraphSyncEmitsMailboxSuccessOnlyAfterBothFolders(t *testing.T) {
 		wantEvents int
 	}{
 		{"both folders succeed", http.StatusOK, `{"value":[],"@odata.deltaLink":"cursor"}`, 1},
+		{"junk rejects token after inbox success", http.StatusUnauthorized, "", 0},
 		{"junk fails after inbox success", http.StatusServiceUnavailable, "", 0},
 		{"junk returns no cursor", http.StatusOK, `{}`, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Authorization") != "Bearer test" {
+					http.Error(w, "missing test bearer", http.StatusUnauthorized)
+					return
+				}
 				if r.URL.Path == "/junk" {
 					w.WriteHeader(tc.junkStatus)
 					if tc.junkStatus != http.StatusOK {
