@@ -14,7 +14,7 @@
 #   - deps/ and _build/ on named volumes so deps survive container
 #     recreates AND are shared across worktrees.
 
-FROM elixir:1.18-otp-26-alpine
+FROM elixir:1.18-otp-27-alpine
 
 RUN apk add --no-cache git build-base inotify-tools
 
