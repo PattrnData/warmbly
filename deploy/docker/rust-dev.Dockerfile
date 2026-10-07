@@ -14,7 +14,7 @@
 # it re-runs `cargo run`. Incremental compile against the warm
 # target/ dir typically takes 2-10s for a single-file change.
 
-FROM rust:1.93-alpine
+FROM rust:1.95-alpine
 
 RUN apk add --no-cache \
     musl-dev cmake make gcc g++ pkgconfig \

@@ -2,6 +2,16 @@
   "name": "warmbly-docs",
   "version": "0.0.0",
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "browserslist": "^4.28.7",
+      "image-size": "^2.0.3",
+      "js-yaml": "^4.3.2",
+      "nanoid": "^3.3.18",
+      "sharp": "^0.35.5",
+      "source-map-js": "^1.2.2"
+    }
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -16,7 +26,7 @@
     "fumadocs-mdx": "14.2.6",
     "fumadocs-ui": "16.4.11",
     "lucide-react": "^0.563.0",
-    "next": "16.2.11",
+    "next": "16.3.6",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tailwind-merge": "^3.4.0"
@@ -28,7 +38,7 @@
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.2",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.3.6",
     "postcss": "^8.5.23",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
