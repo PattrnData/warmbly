@@ -71,17 +71,20 @@ func NewEmailAccountErrorRepository(database *db.DB) EmailAccountErrorRepository
 // warnings; keep one active row per account/error_code and return it until the
 // underlying issue is resolved.
 func (r *emailAccountErrorRepository) Create(ctx context.Context, data *CreateEmailAccountError) (*EmailAccountError, *errx.Error) {
-	if existing, xerr := r.GetUnresolvedByCode(ctx, data.EmailAccountID, data.ErrorCode, data.Severity, data.ResolveMethod, data.TaskID == nil); xerr != nil {
-		return nil, xerr
-	} else if existing != nil {
-		if !data.OccurredAt.IsZero() {
-			query := `UPDATE email_account_errors SET occurred_at = GREATEST(COALESCE(occurred_at, created_at), $2) WHERE id = $1 AND resolved_at IS NULL`
-			if _, err := r.DB.Exec(ctx, query, existing.ID, data.OccurredAt); err != nil {
-				db.CaptureError(err, query, []any{existing.ID, data.OccurredAt}, "exec")
-				return nil, errx.InternalError()
+	syncWarning := data.ErrorCode == "SERVER_UNREACHABLE" && data.Severity == "WARNING" && data.ResolveMethod == "RETRY" && data.TaskID == nil
+	if !syncWarning {
+		if existing, xerr := r.GetUnresolvedByCode(ctx, data.EmailAccountID, data.ErrorCode, data.Severity, data.ResolveMethod, data.TaskID == nil); xerr != nil {
+			return nil, xerr
+		} else if existing != nil {
+			if !data.OccurredAt.IsZero() {
+				query := `UPDATE email_account_errors SET occurred_at = GREATEST(COALESCE(occurred_at, created_at), $2) WHERE id = $1 AND resolved_at IS NULL`
+				if _, err := r.DB.Exec(ctx, query, existing.ID, data.OccurredAt); err != nil {
+					db.CaptureError(err, query, []any{existing.ID, data.OccurredAt}, "exec")
+					return nil, errx.InternalError()
+				}
 			}
+			return existing, nil
 		}
-		return existing, nil
 	}
 
 	query := `
@@ -89,7 +92,17 @@ func (r *emailAccountErrorRepository) Create(ctx context.Context, data *CreateEm
 			email_account_id, user_id, error_code, severity, resolve_method,
 			title, message, user_message, action_required, task_id, occurred_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		RETURNING id, email_account_id, user_id, error_code, severity, resolve_method,
+	`
+	if syncWarning {
+		// The partial unique index serializes concurrent failures and races
+		// against a resolving success. A resolved row is no longer a conflict.
+		query += `ON CONFLICT (email_account_id)
+			WHERE error_code = 'SERVER_UNREACHABLE' AND severity = 'WARNING'
+			  AND resolve_method = 'RETRY' AND task_id IS NULL AND resolved_at IS NULL
+			DO UPDATE SET occurred_at = GREATEST(COALESCE(email_account_errors.occurred_at, email_account_errors.created_at), EXCLUDED.occurred_at)
+		`
+	}
+	query += `RETURNING id, email_account_id, user_id, error_code, severity, resolve_method,
 		          title, message, user_message, action_required, task_id,
 		          resolved_at, resolved_by, created_at
 	`
