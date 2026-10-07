@@ -7,7 +7,7 @@
 #
 # Build with --build-arg CARGO_FEATURES=kafka to include the Kafka + Avro
 # publisher (re-adds the librdkafka build chain; slower).
-FROM rust:1.93-alpine AS builder
+FROM rust:1.95-alpine AS builder
 
 ARG CARGO_FEATURES=""
 RUN apk add --no-cache musl-dev && \
