@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type WorkerEventType string
 
 const (
@@ -27,9 +29,10 @@ const (
 	JobEventTypeMailboxUpdate JobEventType = "UPDATE_MAILBOX"
 	JobEventTypeMailboxDelete JobEventType = "DELETE_MAILBOX"
 
-	JobEventTypeTokenUpdate      JobEventType = "TOKEN_UPDATE"
-	JobEventTypeHistoryIDUpdate  JobEventType = "HISTORY_ID_UPDATE"
-	JobEventTypeGraphDeltaUpdate JobEventType = "GRAPH_DELTA_UPDATE"
+	JobEventTypeTokenUpdate         JobEventType = "TOKEN_UPDATE"
+	JobEventTypeHistoryIDUpdate     JobEventType = "HISTORY_ID_UPDATE"
+	JobEventTypeGraphDeltaUpdate    JobEventType = "GRAPH_DELTA_UPDATE"
+	JobEventTypeMailboxProviderSync JobEventType = "MAILBOX_PROVIDER_SYNC"
 
 	// Task result events from worker
 	JobEventTypeEmailSent   JobEventType = "EMAIL_SENT"
@@ -53,16 +56,17 @@ type JobEvent struct {
 
 // EmailErrorEvent represents an email error event sent from worker to jobsService
 type EmailErrorEvent struct {
-	TaskID         string `json:"task_id" avro:"task_id"`
-	EmailAccountID string `json:"email_account_id" avro:"email_account_id"`
-	UserID         string `json:"user_id" avro:"user_id"`
-	ErrorCode      string `json:"error_code" avro:"error_code"`
-	ErrorType      string `json:"error_type" avro:"error_type"`
-	ResolveMethod  string `json:"resolve_method" avro:"resolve_method"`
-	Message        string `json:"message" avro:"message"`
-	UserVisible    bool   `json:"user_visible" avro:"user_visible"`
-	UserTitle      string `json:"user_title,omitempty" avro:"user_title"`
-	UserMessage    string `json:"user_message,omitempty" avro:"user_message"`
-	ActionRequired string `json:"action_required,omitempty" avro:"action_required"`
-	Timestamp      int64  `json:"timestamp" avro:"timestamp"`
+	TaskID         string    `json:"task_id" avro:"task_id"`
+	EmailAccountID string    `json:"email_account_id" avro:"email_account_id"`
+	UserID         string    `json:"user_id" avro:"user_id"`
+	ErrorCode      string    `json:"error_code" avro:"error_code"`
+	ErrorType      string    `json:"error_type" avro:"error_type"`
+	ResolveMethod  string    `json:"resolve_method" avro:"resolve_method"`
+	Message        string    `json:"message" avro:"message"`
+	UserVisible    bool      `json:"user_visible" avro:"user_visible"`
+	UserTitle      string    `json:"user_title,omitempty" avro:"user_title"`
+	UserMessage    string    `json:"user_message,omitempty" avro:"user_message"`
+	ActionRequired string    `json:"action_required,omitempty" avro:"action_required"`
+	Timestamp      int64     `json:"timestamp" avro:"timestamp"`
+	OccurredAt     time.Time `json:"occurred_at,omitempty" avro:"occurred_at"`
 }

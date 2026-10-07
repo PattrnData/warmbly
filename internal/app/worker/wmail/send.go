@@ -78,6 +78,9 @@ const maxSendRetries = 3
 
 // Send attempts to send an email with retry for transient failures
 func (w *WMail) Send(ctx context.Context, req *SendRequest) *SendResult {
+	if w.quarantined.Load() || (w.Ctx != nil && w.Ctx.Err() != nil) {
+		return &SendResult{Error: errx.ErrMailAuthenticationFailed}
+	}
 	// For warmup emails, ensure HTML is empty
 	bodyHTML := req.BodyHTML
 	if req.IsWarmup {
@@ -86,6 +89,9 @@ func (w *WMail) Send(ctx context.Context, req *SendRequest) *SendResult {
 
 	var result *SendResult
 	for attempt := 0; attempt <= maxSendRetries; attempt++ {
+		if w.quarantined.Load() || (w.Ctx != nil && w.Ctx.Err() != nil) {
+			return &SendResult{Error: errx.ErrMailAuthenticationFailed}
+		}
 		result = &SendResult{Success: false, SentAt: time.Now()}
 
 		switch w.EmailType {

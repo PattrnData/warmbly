@@ -3,6 +3,7 @@ package wmail
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/app/cipher"
@@ -70,7 +71,9 @@ type WMail struct {
 	Cancel        context.CancelFunc
 	TerminateFunc func()
 
-	onEvent func(jobType models.JobEventType, body any) error
+	onEvent          func(jobType models.JobEventType, body any) error
+	pendingSyncAlert error       // retry a failed warning publish before any success receipt
+	quarantined      atomic.Bool // stop provider work while a terminal alert is pending
 }
 
 func NewWMail(

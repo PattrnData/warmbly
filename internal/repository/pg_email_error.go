@@ -41,6 +41,7 @@ type CreateEmailAccountError struct {
 	UserMessage    *string
 	ActionRequired *string
 	TaskID         *uuid.UUID
+	OccurredAt     time.Time
 }
 
 // EmailAccountErrorRepository defines operations for email account errors
@@ -50,6 +51,7 @@ type EmailAccountErrorRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]EmailAccountError, *errx.Error)
 	Resolve(ctx context.Context, errorID uuid.UUID, resolvedBy string) *errx.Error
 	ResolveByMethod(ctx context.Context, accountID uuid.UUID, method string) *errx.Error
+	ResolveConnectionWarnings(ctx context.Context, accountID uuid.UUID, startedAt time.Time) *errx.Error
 	ResolveAllForAccount(ctx context.Context, accountID uuid.UUID, resolvedBy string) *errx.Error
 }
 
@@ -69,18 +71,38 @@ func NewEmailAccountErrorRepository(database *db.DB) EmailAccountErrorRepository
 // warnings; keep one active row per account/error_code and return it until the
 // underlying issue is resolved.
 func (r *emailAccountErrorRepository) Create(ctx context.Context, data *CreateEmailAccountError) (*EmailAccountError, *errx.Error) {
-	if existing, xerr := r.GetUnresolvedByCode(ctx, data.EmailAccountID, data.ErrorCode); xerr != nil {
-		return nil, xerr
-	} else if existing != nil {
-		return existing, nil
+	syncWarning := data.ErrorCode == "SERVER_UNREACHABLE" && data.Severity == "WARNING" && data.ResolveMethod == "RETRY" && data.TaskID == nil
+	if !syncWarning {
+		if existing, xerr := r.GetUnresolvedByCode(ctx, data.EmailAccountID, data.ErrorCode, data.Severity, data.ResolveMethod, data.TaskID == nil); xerr != nil {
+			return nil, xerr
+		} else if existing != nil {
+			if !data.OccurredAt.IsZero() {
+				query := `UPDATE email_account_errors SET occurred_at = GREATEST(COALESCE(occurred_at, created_at), $2) WHERE id = $1 AND resolved_at IS NULL`
+				if _, err := r.DB.Exec(ctx, query, existing.ID, data.OccurredAt); err != nil {
+					db.CaptureError(err, query, []any{existing.ID, data.OccurredAt}, "exec")
+					return nil, errx.InternalError()
+				}
+			}
+			return existing, nil
+		}
 	}
 
 	query := `
 		INSERT INTO email_account_errors (
 			email_account_id, user_id, error_code, severity, resolve_method,
-			title, message, user_message, action_required, task_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING id, email_account_id, user_id, error_code, severity, resolve_method,
+			title, message, user_message, action_required, task_id, occurred_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`
+	if syncWarning {
+		// The partial unique index serializes concurrent failures and races
+		// against a resolving success. A resolved row is no longer a conflict.
+		query += `ON CONFLICT (email_account_id)
+			WHERE error_code = 'SERVER_UNREACHABLE' AND severity = 'WARNING'
+			  AND resolve_method = 'RETRY' AND task_id IS NULL AND resolved_at IS NULL
+			DO UPDATE SET occurred_at = GREATEST(COALESCE(email_account_errors.occurred_at, email_account_errors.created_at), EXCLUDED.occurred_at)
+		`
+	}
+	query += `RETURNING id, email_account_id, user_id, error_code, severity, resolve_method,
 		          title, message, user_message, action_required, task_id,
 		          resolved_at, resolved_by, created_at
 	`
@@ -96,6 +118,7 @@ func (r *emailAccountErrorRepository) Create(ctx context.Context, data *CreateEm
 		data.UserMessage,
 		data.ActionRequired,
 		data.TaskID,
+		nullableOccurredAt(data.OccurredAt),
 	}
 
 	var e EmailAccountError
@@ -110,6 +133,13 @@ func (r *emailAccountErrorRepository) Create(ctx context.Context, data *CreateEm
 	}
 
 	return &e, nil
+}
+
+func nullableOccurredAt(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
 
 // GetByAccountID retrieves errors for a specific email account
@@ -210,13 +240,14 @@ func (r *emailAccountErrorRepository) Resolve(ctx context.Context, errorID uuid.
 	return nil
 }
 
-// ResolveByMethod resolves all errors for an account that have the specified resolve method
+// ResolveByMethod resolves warnings for an account that have the specified resolve method.
 func (r *emailAccountErrorRepository) ResolveByMethod(ctx context.Context, accountID uuid.UUID, method string) *errx.Error {
 	query := `
 		UPDATE email_account_errors
 		SET resolved_at = NOW(), resolved_by = $1
 		WHERE email_account_id = $2
 		  AND resolve_method = $3
+		  AND severity = 'WARNING'
 		  AND resolved_at IS NULL
 	`
 
@@ -227,6 +258,27 @@ func (r *emailAccountErrorRepository) ResolveByMethod(ctx context.Context, accou
 		return errx.InternalError()
 	}
 
+	return nil
+}
+
+// ResolveConnectionWarnings clears only transient connection warnings proven by
+// a subsequent complete mailbox sync; sync does not prove sending is healthy.
+func (r *emailAccountErrorRepository) ResolveConnectionWarnings(ctx context.Context, accountID uuid.UUID, startedAt time.Time) *errx.Error {
+	query := `
+		UPDATE email_account_errors
+		SET resolved_at = NOW(), resolved_by = 'system:RETRY'
+		WHERE email_account_id = $1
+		  AND error_code = 'SERVER_UNREACHABLE'
+		  AND severity = 'WARNING'
+		  AND resolve_method = 'RETRY'
+		  AND task_id IS NULL
+		  AND COALESCE(occurred_at, created_at) < $2
+		  AND resolved_at IS NULL
+	`
+	if _, err := r.DB.Exec(ctx, query, accountID, startedAt); err != nil {
+		db.CaptureError(err, query, []any{accountID, startedAt}, "exec")
+		return errx.InternalError()
+	}
 	return nil
 }
 
@@ -275,8 +327,8 @@ func MapSeverity(errType errx.MailErrorType) string {
 	}
 }
 
-// GetUnresolvedByCode checks if there's already an unresolved error with the same code
-func (r *emailAccountErrorRepository) GetUnresolvedByCode(ctx context.Context, accountID uuid.UUID, errorCode string) (*EmailAccountError, *errx.Error) {
+// GetUnresolvedByCode checks for an unresolved error with the same origin and semantics.
+func (r *emailAccountErrorRepository) GetUnresolvedByCode(ctx context.Context, accountID uuid.UUID, errorCode, severity, method string, mailbox bool) (*EmailAccountError, *errx.Error) {
 	query := `
 		SELECT id, email_account_id, user_id, error_code, severity, resolve_method,
 		       title, message, user_message, action_required, task_id,
@@ -284,13 +336,15 @@ func (r *emailAccountErrorRepository) GetUnresolvedByCode(ctx context.Context, a
 		FROM email_account_errors
 		WHERE email_account_id = $1
 		  AND error_code = $2
+		  AND severity = $3 AND resolve_method = $4
+		  AND (task_id IS NULL) = $5
 		  AND resolved_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT 1
 	`
 
 	var e EmailAccountError
-	err := r.DB.QueryRow(ctx, query, accountID, errorCode).Scan(
+	err := r.DB.QueryRow(ctx, query, accountID, errorCode, severity, method, mailbox).Scan(
 		&e.ID, &e.EmailAccountID, &e.UserID, &e.ErrorCode, &e.Severity, &e.ResolveMethod,
 		&e.Title, &e.Message, &e.UserMessage, &e.ActionRequired, &e.TaskID,
 		&e.ResolvedAt, &e.ResolvedBy, &e.CreatedAt,
@@ -299,7 +353,7 @@ func (r *emailAccountErrorRepository) GetUnresolvedByCode(ctx context.Context, a
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // No existing error found
 		}
-		db.CaptureError(err, query, []any{accountID, errorCode}, "queryrow")
+		db.CaptureError(err, query, []any{accountID, errorCode, severity, method, mailbox}, "queryrow")
 		return nil, errx.InternalError()
 	}
 

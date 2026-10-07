@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/warmbly/warmbly/internal/errx"
@@ -95,13 +96,62 @@ func TestEmailSentResultResolvesRetryMailboxErrors(t *testing.T) {
 	}
 }
 
+func TestMailboxProviderSyncResolvesMailboxRetryWarnings(t *testing.T) {
+	accountID := uuid.New()
+	errors := &fakeEmailAccountErrorRepo{}
+	svc := &JobsService{EmailAccountErrorRepository: errors}
+	svc.InitEvents()
+
+	if err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeMailboxProviderSync,
+		Body: map[string]any{"email_id": accountID.String(), "started_at": time.Now().UTC().Format(time.RFC3339Nano)},
+	}); err != nil {
+		t.Fatalf("HandleEvent provider sync: %v", err)
+	}
+	if errors.connectionID != accountID || errors.method != "" {
+		t.Fatalf("resolved connection warning for %s; generic method %q; want %s and no generic resolution", errors.connectionID, errors.method, accountID)
+	}
+}
+
+func TestMailboxProviderSyncRejectsUnboundedSuccess(t *testing.T) {
+	errors := &fakeEmailAccountErrorRepo{}
+	svc := &JobsService{EmailAccountErrorRepository: errors}
+	svc.InitEvents()
+	if err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeMailboxProviderSync,
+		Body: map[string]any{"email_id": uuid.New().String()},
+	}); err == nil {
+		t.Fatal("success without pass start could erase a newer warning")
+	}
+	if errors.connectionID != uuid.Nil {
+		t.Fatal("unbounded success reached repository")
+	}
+}
+
+func TestMailboxProviderSyncRejectsMissingMailbox(t *testing.T) {
+	errors := &fakeEmailAccountErrorRepo{}
+	svc := &JobsService{EmailAccountErrorRepository: errors}
+	svc.InitEvents()
+	if err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeMailboxProviderSync,
+		Body: map[string]any{"email_id": uuid.Nil.String()},
+	}); err == nil {
+		t.Fatal("missing mailbox accepted")
+	}
+	if errors.method != "" || errors.connectionID != uuid.Nil {
+		t.Fatalf("resolved warning without mailbox: %q %s", errors.method, errors.connectionID)
+	}
+}
+
 type fakeEmailAccountErrorRepo struct {
-	accountID uuid.UUID
-	method    string
+	accountID    uuid.UUID
+	connectionID uuid.UUID
+	method       string
+	createErr    *errx.Error
 }
 
 func (f *fakeEmailAccountErrorRepo) Create(context.Context, *repository.CreateEmailAccountError) (*repository.EmailAccountError, *errx.Error) {
-	return nil, nil
+	return nil, f.createErr
 }
 func (f *fakeEmailAccountErrorRepo) GetByAccountID(context.Context, uuid.UUID, bool) ([]repository.EmailAccountError, *errx.Error) {
 	return nil, nil
@@ -115,6 +165,10 @@ func (f *fakeEmailAccountErrorRepo) Resolve(context.Context, uuid.UUID, string) 
 func (f *fakeEmailAccountErrorRepo) ResolveByMethod(_ context.Context, accountID uuid.UUID, method string) *errx.Error {
 	f.accountID = accountID
 	f.method = method
+	return nil
+}
+func (f *fakeEmailAccountErrorRepo) ResolveConnectionWarnings(_ context.Context, accountID uuid.UUID, _ time.Time) *errx.Error {
+	f.connectionID = accountID
 	return nil
 }
 func (f *fakeEmailAccountErrorRepo) ResolveAllForAccount(context.Context, uuid.UUID, string) *errx.Error {
@@ -167,6 +221,24 @@ func TestEmailServerErrorAccountEventStillUsesAccountHandler(t *testing.T) {
 	}
 	if repo.failureTaskID != uuid.Nil {
 		t.Fatalf("account-shaped error event recorded task failure for %s", repo.failureTaskID)
+	}
+}
+
+func TestEmailServerErrorPersistenceFailureDoesNotAcknowledge(t *testing.T) {
+	repo := &fakeEmailAccountErrorRepo{createErr: errx.InternalError()}
+	svc := &JobsService{EmailAccountErrorRepository: repo}
+	svc.InitEvents()
+	err := svc.HandleEvent(context.Background(), &models.JobEvent{
+		Type: models.JobEventTypeEmailServerError,
+		Body: map[string]any{
+			"email_account_id": uuid.New().String(),
+			"user_id":          uuid.New().String(),
+			"error_code":       "SERVER_UNREACHABLE",
+			"resolve_method":   "RETRY",
+		},
+	})
+	if err == nil {
+		t.Fatal("warning persistence failed, but event handler acknowledged it")
 	}
 }
 

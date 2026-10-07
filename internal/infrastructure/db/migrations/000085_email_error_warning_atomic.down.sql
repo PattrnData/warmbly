@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS email_account_errors_one_active_connection_warning;
