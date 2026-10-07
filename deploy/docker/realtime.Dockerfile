@@ -1,5 +1,5 @@
 # Build stage
-FROM elixir:1.18-otp-26-alpine AS builder
+FROM elixir:1.18-otp-27-alpine AS builder
 
 RUN apk add --no-cache git build-base
 
