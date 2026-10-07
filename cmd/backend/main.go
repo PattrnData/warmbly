@@ -99,6 +99,7 @@ import (
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
 	"github.com/warmbly/warmbly/internal/infrastructure/storage"
 	"github.com/warmbly/warmbly/internal/jobs"
+	"github.com/warmbly/warmbly/internal/maintenance"
 	"github.com/warmbly/warmbly/internal/models"
 	"github.com/warmbly/warmbly/internal/notify"
 	"github.com/warmbly/warmbly/internal/observability"
@@ -116,6 +117,18 @@ import (
 )
 
 func main() {
+	// Fence before config, migrations, schedulers, routes or subscriptions.
+	healthOnly, err := maintenance.FromEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if healthOnly {
+		log.Print("maintenance: host-wide health-only; no application initialization or dispatch")
+		if err := maintenance.ServeHealthOnly(os.Getenv("API_HOST")); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	var addr string
 	var ginMode string
 	var websocketURI string

@@ -37,6 +37,7 @@ import (
 	"github.com/warmbly/warmbly/internal/infrastructure/kms"
 	"github.com/warmbly/warmbly/internal/infrastructure/pubsub"
 	"github.com/warmbly/warmbly/internal/infrastructure/storage"
+	"github.com/warmbly/warmbly/internal/maintenance"
 	"github.com/warmbly/warmbly/internal/models"
 	"github.com/warmbly/warmbly/internal/notify"
 	"github.com/warmbly/warmbly/internal/observability"
@@ -46,6 +47,15 @@ import (
 )
 
 func main() {
+	healthOnly, err := maintenance.FromEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if healthOnly {
+		log.Print("maintenance: host-wide quiescent consumer; no bus subscription or message acknowledgement")
+		maintenance.WaitQuiescent()
+		return
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
