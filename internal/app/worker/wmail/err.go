@@ -27,6 +27,10 @@ func (w *WMail) CaptureError(err error) error {
 	if eventType == "" {
 		return nil
 	}
+	terminal := eventType == models.JobEventTypeEmailAuthError || eventType == models.JobEventTypeEmailDisabled
+	if terminal {
+		w.quarantined.Store(true)
+	}
 
 	userInfo := mailErr.GetUserErrorInfo()
 	errorEvent := models.EmailErrorEvent{
@@ -50,8 +54,7 @@ func (w *WMail) CaptureError(err error) error {
 
 	// Critical errors should stop the sync loop and remove the account from the
 	// worker's local state until the user re-authenticates.
-	if eventType == models.JobEventTypeEmailAuthError ||
-		eventType == models.JobEventTypeEmailDisabled {
+	if terminal {
 		if w.Cancel != nil {
 			w.Cancel()
 		}

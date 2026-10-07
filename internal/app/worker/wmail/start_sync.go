@@ -69,6 +69,9 @@ func (w *WMail) runSyncLoop(ctx context.Context, interval time.Duration) {
 // so one mailbox's bad server response must not take down every other
 // account's sync and send loops.
 func (w *WMail) syncOnce(ctx context.Context) (success bool) {
+	if ctx.Err() != nil || (w.Ctx != nil && w.Ctx.Err() != nil) {
+		return false
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err := fmt.Errorf("mail sync panic: %v", r)
@@ -83,9 +86,15 @@ func (w *WMail) syncOnce(ctx context.Context) (success bool) {
 			return false
 		}
 		w.pendingSyncAlert = nil
+		if w.quarantined.Load() {
+			return false
+		}
 		if ctx.Err() != nil {
 			return false
 		}
+	}
+	if w.quarantined.Load() {
+		return false
 	}
 	if err := w.SyncMail(ctx); err != nil {
 		if publishErr := w.CaptureError(err); publishErr != nil {
