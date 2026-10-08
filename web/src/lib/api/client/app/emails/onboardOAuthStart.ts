@@ -5,11 +5,11 @@ export interface OAuthStartResponse {
     state: string;
 }
 
-export default async function onboardOAuthStart(provider: "gmail" | "outlook"): Promise<OAuthStartResponse> {
+export default async function onboardOAuthStart(provider: "gmail" | "outlook", reconnectEmailID?: string): Promise<OAuthStartResponse> {
     return await Request<OAuthStartResponse>({
         method: "POST",
-        url: `/emails/onboarding/oauth/start`,
-        data: { provider },
+        url: reconnectEmailID ? `/emails/onboarding/oauth/reconnect/start` : `/emails/onboarding/oauth/start`,
+        data: reconnectEmailID ? { account_id: reconnectEmailID } : { provider },
         authorization: true,
     });
 }

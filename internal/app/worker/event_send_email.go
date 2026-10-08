@@ -33,6 +33,30 @@ func (w *WorkerService) HandleSendEmail(ctx context.Context, sendEmail models.Se
 		w.sendEmailFailure(sendEmail.TaskID, sendEmail.EmailID, mail, err.Error())
 		return err
 	}
+	if sendEmail.IsWarmup {
+		// Check durable state for every queued command, not the cached WMail.
+		// An unavailable control plane must never authorize a warmup send.
+		if w.WarmupDenyChecker == nil {
+			return fmt.Errorf("warmup deny checker not configured")
+		}
+		denied, err := w.WarmupDenyChecker.Denied(ctx, sendEmail.EmailID)
+		if err != nil {
+			// Kafka's current consumer commits even when a handler returns an error;
+			// publish an explicit terminal failure rather than silently dropping
+			// this warmup task. Neither path is permission to send.
+			log.Error().Err(err).Str("email_id", sendEmail.EmailID.String()).Msg("Warmup deny status unavailable")
+			return w.Produce(models.JobEventTypeEmailFailed, sendEmail.TaskID.String(), models.SendEmailResult{
+				TaskID: sendEmail.TaskID, Success: false, LegacyErrorMsg: "warmup deny status unavailable", SentAt: time.Now(),
+			})
+		}
+		log.Info().Str("email_id", sendEmail.EmailID.String()).Str("task_id", sendEmail.TaskID.String()).Bool("denied", denied).Msg("Warmup durable deny check completed")
+		if denied {
+			// Ack the command only after its terminal failure event is published.
+			return w.Produce(models.JobEventTypeEmailFailed, sendEmail.TaskID.String(), models.SendEmailResult{
+				TaskID: sendEmail.TaskID, Success: false, LegacyErrorMsg: "warmup denied for mailbox", SentAt: time.Now(),
+			})
+		}
+	}
 
 	// Decrypt subject
 	subject := sendEmail.Subject

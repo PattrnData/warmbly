@@ -57,6 +57,7 @@ type Email struct {
 
 	Warmup          *time.Time `json:"warmup"`
 	WarmupPausedAt  *time.Time `json:"warmup_paused_at"`
+	WarmupDenied    bool       `json:"-"`
 	WarmupBase      int        `json:"warmup_base"`
 	WarmupMax       int        `json:"warmup_max"`
 	WarmupIncrease  int        `json:"warmup_increase"`
@@ -81,7 +82,7 @@ type Email struct {
 // pointer so a paused mailbox is treated as "not sending normal warmup" while
 // still preserving its ramp progress.
 func (e *Email) IsWarmingActive() bool {
-	return e.Warmup != nil && e.WarmupPausedAt == nil
+	return !e.WarmupDenied && e.Warmup != nil && e.WarmupPausedAt == nil
 }
 
 // IsWarmupPaused reports whether warmup is enabled but paused. A paused
@@ -165,10 +166,12 @@ type NewOutlookAppOnlyMailboxAccount struct {
 
 // EmailOnboardingState is stored in Redis for the lifetime of an OAuth round trip.
 type EmailOnboardingState struct {
-	UserID         string     `json:"user_id"`
-	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
-	Provider       string     `json:"provider"`
-	Nonce          string     `json:"nonce"`
+	UserID                     string     `json:"user_id"`
+	OrganizationID             *uuid.UUID `json:"organization_id,omitempty"`
+	Provider                   string     `json:"provider"`
+	Nonce                      string     `json:"nonce"`
+	ReconnectAccountID         *uuid.UUID `json:"reconnect_account_id,omitempty"`
+	ReconnectCredentialVersion string     `json:"reconnect_credential_version,omitempty"`
 }
 
 // EmailOnboardingStartResponse is returned from POST /emails/onboarding/oauth/start.

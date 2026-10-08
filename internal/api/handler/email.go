@@ -33,11 +33,15 @@ func (h *Handler) EmailsSearch(c *gin.Context) {
 }
 
 func (h *Handler) GetEmail(c *gin.Context) {
-	userID := middleware.GetUserID(c)
+	orgID := middleware.GetOrganizationID(c)
+	if orgID == nil {
+		errx.Handle(c, errx.New(errx.BadRequest, "no organization selected"))
+		return
+	}
 
 	emailAccountID := c.Param("id")
 
-	resp, err := h.EmailService.Get(c.Request.Context(), userID, emailAccountID)
+	resp, err := h.EmailService.Get(c.Request.Context(), orgID.String(), emailAccountID)
 	if err != nil {
 		errx.Handle(c, err)
 		return

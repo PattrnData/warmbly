@@ -221,6 +221,7 @@ func main() {
 	// survive the config block where they're initialized.
 	var s3ForHandler storage.Store
 	var emailMessageMapForHandler repository.EmailMessageMapRepository
+	var warmupDenyEmails repository.EmailRepository
 	var trackedLinkRepository repository.TrackedLinkRepository
 	var userRepoForHandler repository.UserRepository
 	var organizationRepoForHandler repository.OrganizationRepository
@@ -509,6 +510,7 @@ func main() {
 			log.Fatal("Invalid CREDENTIALS_ENCRYPTION_KEY: ", cerr)
 		}
 		emailRepostory := repository.NewEmailRepostory(primaryDB, credEncrypter)
+		warmupDenyEmails = emailRepostory
 		campaignRepostory := repository.NewCampaignRepostory(primaryDB)
 		sequenceRepostory := repository.NewSequenceRepostory(primaryDB)
 		contactRepostory := repository.NewContactRepostory(primaryDB)
@@ -1436,6 +1438,7 @@ func main() {
 		Storage:                  s3ForHandler,
 		EncryptedKeys:            encryptedKeys,
 		EmailMessageMap:          emailMessageMapForHandler,
+		WarmupDenyEmails:         warmupDenyEmails,
 		TrackedLinks:             trackedLinkRepository,
 		UserRepo:                 userRepoForHandler,
 		OrgRepo:                  organizationRepoForHandler,

@@ -72,6 +72,7 @@ function openCentered(url: string, name: string): Window | null {
 
 export default function AddEmailModal() {
     const user = useUserProfile();
+    const { addEmail, reconnectEmailID, setReconnectEmailID } = user;
     const qc = useQueryClient();
 
     const [view, setView] = React.useState<View>("pick");
@@ -80,12 +81,15 @@ export default function AddEmailModal() {
 
     // Reset when the modal closes.
     React.useEffect(() => {
-        if (!user.addEmail) {
+        if (!addEmail) {
             setView("pick");
             setOauthBusy(null);
             pendingState.current = null;
+            setReconnectEmailID(null);
+        } else if (reconnectEmailID) {
+            setView("outlook");
         }
-    }, [user.addEmail]);
+    }, [addEmail, reconnectEmailID, setReconnectEmailID]);
 
     // Listen for the OAuth popup's postMessage. We only honour messages
     // whose origin matches APP_URL and whose state matches the one we
@@ -118,8 +122,8 @@ export default function AddEmailModal() {
                     return inbox;
                 }),
                 {
-                    loading: "Connecting…",
-                    success: "Mailbox connected",
+                    loading: user.reconnectEmailID ? "Reconnecting…" : "Connecting…",
+                    success: user.reconnectEmailID ? "Credentials renewed; mailbox remains inactive pending review" : "Mailbox connected",
                     error: (e: AppError) => buildError(e),
                 },
             ).finally(() => setOauthBusy(null));
@@ -132,7 +136,7 @@ export default function AddEmailModal() {
         if (oauthBusy) return;
         setOauthBusy(provider);
         try {
-            const { url, state } = await onboardOAuthStart(provider);
+            const { url, state } = await onboardOAuthStart(provider, provider === "outlook" ? user.reconnectEmailID ?? undefined : undefined);
             pendingState.current = { provider, state };
             const popup = openCentered(url, `connect-${provider}`);
             if (!popup) {
@@ -168,7 +172,7 @@ export default function AddEmailModal() {
                         onClick={(e) => e.stopPropagation()}
                         className="w-full max-w-[560px] rounded-lg bg-white border border-slate-200 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.18),0_8px_16px_-8px_rgba(15,23,42,0.1)] overflow-hidden flex flex-col max-h-[88dvh]"
                     >
-                        <Header view={view} onBack={() => setView("pick")} onClose={() => user.setAddEmail(false)} />
+                        <Header view={view} onBack={reconnectEmailID ? undefined : () => setView("pick")} onClose={() => user.setAddEmail(false)} />
                         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">
                             <AnimatePresence mode="wait" initial={false}>
                                 <motion.div
@@ -178,7 +182,7 @@ export default function AddEmailModal() {
                                     exit={{ opacity: 0, x: view === "pick" ? 12 : -12 }}
                                     transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
                                 >
-                                    {view === "pick" && <PickProvider onPick={setView} />}
+                                    {view === "pick" && !user.reconnectEmailID && <PickProvider onPick={setView} />}
                                     {view === "gmail" && (
                                         <OAuthPanel
                                             provider="gmail"
@@ -217,7 +221,7 @@ function Header({
     onClose,
 }: {
     view: View;
-    onBack: () => void;
+    onBack?: () => void;
     onClose: () => void;
 }) {
     const sub: Record<View, string> = {
@@ -228,7 +232,7 @@ function Header({
     };
     return (
         <div className="h-12 px-3 border-b border-slate-200 flex items-center gap-2.5 shrink-0">
-            {view !== "pick" && (
+            {view !== "pick" && onBack && (
                 <button
                     type="button"
                     onClick={onBack}
