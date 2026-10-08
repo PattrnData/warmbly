@@ -14,8 +14,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/warmbly/warmbly/internal/errx"
 	"github.com/warmbly/warmbly/internal/infrastructure/cache"
@@ -153,18 +155,47 @@ func (c *Client) doJSON(ctx context.Context, method, url string, in, out any) er
 		contentType = "application/json"
 	}
 
-	resp, err := c.do(ctx, method, url, contentType, body)
-	if err != nil {
-		return errx.ErrMailServerUnreachable
+	for attempt := 0; ; attempt++ {
+		resp, err := c.do(ctx, method, url, contentType, body)
+		if ctx.Err() != nil {
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
+			return ctx.Err()
+		}
+		transient := err != nil || resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500
+		if method == http.MethodGet && transient && attempt < 2 {
+			wait := time.Duration(100<<attempt) * time.Millisecond
+			if resp != nil {
+				if resp.StatusCode == http.StatusTooManyRequests {
+					if seconds, parseErr := strconv.Atoi(resp.Header.Get("Retry-After")); parseErr == nil && seconds >= 0 {
+						wait = time.Duration(seconds) * time.Second
+					} else if date, parseErr := http.ParseTime(resp.Header.Get("Retry-After")); parseErr == nil {
+						wait = max(0, time.Until(date))
+					}
+				}
+				_ = resp.Body.Close()
+			}
+			timer := time.NewTimer(wait)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+			continue
+		}
+		if err != nil {
+			return errx.ErrMailServerUnreachable
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return HandleError(resp)
+		}
+		if out != nil {
+			return json.NewDecoder(resp.Body).Decode(out)
+		}
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return nil
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return HandleError(resp)
-	}
-	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
-	}
-	_, _ = io.Copy(io.Discard, resp.Body)
-	return nil
 }
