@@ -84,6 +84,9 @@ type EmailRepository interface {
 	NewOauthAccount(ctx context.Context, userID string, data models.NewOauthAccount) (*models.Email, *errx.Error)
 	NewSMTPIMAPAccount(ctx context.Context, userID string, data models.NewSMTPIMAPAccount) (*models.Email, *errx.Error)
 	RefreshBoxToken(ctx context.Context, id uuid.UUID, accessToken, refreshToken string, expiresAt time.Time) error
+	// ReconnectOutlookCredentials changes only the credential row for the exact
+	// delegated mailbox. A concurrent refresh or identity change fails closed.
+	ReconnectOutlookCredentials(ctx context.Context, id uuid.UUID, userID string, orgID uuid.UUID, email, previousRefreshToken, accessToken, refreshToken string, expiresAt time.Time) *errx.Error
 
 	// ExistsForUser checks whether the given (user_id, email) pair is already connected.
 	ExistsForUser(ctx context.Context, userID, email string) (bool, *errx.Error)
