@@ -1,6 +1,6 @@
 # Outlook ID-preserving reconnect: source-only gate
 
-Status: delegated same-identity path implemented and fixture-tested; not approved, operated or deployed. No public HTTP route, scheduled repair or migration exists. This path is not a repair of the reported 10 shared/delegated tokens or fifth inactive account.
+Status: delegated same-identity path implemented and tested against an isolated disposable PostgreSQL schema; not approved, operated or deployed. No public HTTP route, scheduled repair or migration exists. This path is not a repair of the reported 10 shared/delegated tokens or fifth inactive account.
 
 A future operator must approve the exact account ID, user ID, organization ID, email, provider, status, parent/delegation evidence, tenant, consent and expiry on a fresh account-specific readback. The explicit `EmailService.ReconnectOutlook` exchanges a fresh authorization code, reads Graph `/me`, and requires a matching mailbox email; it compare-and-swaps only the existing OAuth access token, refresh token and expiry, conditioned on unchanged account ID, owner, organization, email, provider, active status and previous refresh token. No account insertion, reactivation, worker/sender/campaign change or Graph mutation. A CAS miss means stop, not fallback-create or retry against another ID. Do not put code or raw tokens in shell history, files, logs, chat, or PR.
 
